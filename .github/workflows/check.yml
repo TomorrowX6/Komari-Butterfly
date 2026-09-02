@@ -1,0 +1,27 @@
+name: Check theme
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build
+        run: npm run build
+      - name: Validate
+        run: npm run validate
+      - name: Verify package
+        run: |
+          npm run package
+          unzip -l release/komari-butterfly-v*.zip

@@ -1,0 +1,14 @@
+{
+  "name": "komari-butterfly",
+  "private": true,
+  "description": "A WinUI 3 and Mica-inspired theme for Komari Monitor.",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "validate": "node scripts/validate.mjs",
+    "package": "node scripts/package.mjs",
+    "check": "npm run build && npm run validate"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
