@@ -6,8 +6,6 @@ A clean, responsive theme for [Komari Monitor](https://github.com/komari-monitor
 
 ![Komari Butterfly light preview](preview.png)
 
-The phone layout includes an expandable search command bar, swipe-to-dismiss node details, a full-screen interactive globe with momentum-based rotation, safe-area handling, keyboard-aware controls, and a direction-aware bottom navigation bar.
-
 ## Highlights
 
 - Layered Mica surfaces, restrained shadows, clear WinUI-style states, and five accent colors.
