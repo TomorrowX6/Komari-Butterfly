@@ -19,11 +19,13 @@ function localizedText(value) {
   return Object.values(value).some(entry => typeof entry === "string" && entry.trim().length > 0);
 }
 
-if (!localizedText(manifest.name)) errors.push("name must contain a non-empty localized value");
+if (typeof manifest.name !== "string" || manifest.name.trim().length === 0) {
+  errors.push("name must be a non-empty string");
+}
 if (typeof manifest.short !== "string" || !/^[A-Za-z0-9_-]+$/.test(manifest.short) || manifest.short === "default") {
   errors.push("short must use only letters, digits, underscores, or hyphens and must not be default");
 }
-if (!localizedText(manifest.description)) errors.push("description must contain a non-empty localized value");
+if (typeof manifest.description !== "string") errors.push("description must be a string");
 if (typeof manifest.version !== "string" || !/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(manifest.version)) {
   errors.push("version must be a semantic version");
 }

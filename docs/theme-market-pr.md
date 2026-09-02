@@ -16,4 +16,4 @@ This release focuses on phone and touch use: compact search and sort labels, hor
 
 The release package contains `komari-theme.json`, `preview.png`, and `dist/index.html` at the required paths. The SHA256 value in `docs/theme-market-entry.json` is generated from the release ZIP by the repository packaging script.
 
-Release SHA256: `0383119c7c4238462590b9b56c38cb92fd7ee9de23b22c35f4b99b24e0f42a19`
+Release SHA256: `62e7e2762d002b100ce1a24f4047102e9bf03d160eba78e54115f742e9f9d482`
