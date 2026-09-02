@@ -145,6 +145,17 @@ const STRINGS = {
     avgLatencyShort: "平均延迟",
     trafficOverview: "实时网络流量",
     trafficCopy: "根据各在线节点的当前上传与下载速率汇总。",
+    recent24hTraffic: "最近24小时流量",
+    trafficWindow: "汇总各节点近期网络记录",
+    cumulativeUpload: "累计上传",
+    cumulativeDownload: "累计下载",
+    trafficTop5: "流量消耗 Top 5",
+    trafficRankCopy: "按节点累计上传与下载总量排序。",
+    peakAt: "峰值 {rate} · {time}",
+    todayAt: "今天 {time}",
+    yesterdayAt: "昨天 {time}",
+    trafficHistoryLoading: "正在汇总节点流量记录…",
+    trafficNoHistory: "暂无流量记录",
     aboutDescription: "Butterfly 将 WinUI 3 的克制层次、Mica 质感与 Komari 的实时数据结合，强调清晰、快速与响应式体验。",
     designLanguage: "WinUI 设计语言",
     designLanguageCopy: "使用层级表面、柔和圆角、清晰状态与精确间距构建信息密集型仪表盘。",
@@ -289,6 +300,17 @@ const STRINGS = {
     avgLatencyShort: "Avg. latency",
     trafficOverview: "Live network traffic",
     trafficCopy: "Aggregated from the current upload and download rates of online nodes.",
+    recent24hTraffic: "Traffic in the last 24 hours",
+    trafficWindow: "Recent network records aggregated across nodes",
+    cumulativeUpload: "Total upload",
+    cumulativeDownload: "Total download",
+    trafficTop5: "Traffic usage Top 5",
+    trafficRankCopy: "Ranked by each node's cumulative upload and download.",
+    peakAt: "Peak {rate} · {time}",
+    todayAt: "Today {time}",
+    yesterdayAt: "Yesterday {time}",
+    trafficHistoryLoading: "Aggregating node traffic records…",
+    trafficNoHistory: "No traffic records yet",
     aboutDescription: "Butterfly combines the restrained hierarchy and Mica material of WinUI 3 with Komari live data for a clear, fast, responsive experience.",
     designLanguage: "WinUI design language",
     designLanguageCopy: "Layered surfaces, soft corners, clear states, and precise spacing for an information-dense dashboard.",
@@ -433,6 +455,17 @@ const STRINGS = {
     avgLatencyShort: "平均遅延",
     trafficOverview: "リアルタイム通信量",
     trafficCopy: "オンラインノードの現在の送受信速度を集計します。",
+    recent24hTraffic: "直近24時間の通信量",
+    trafficWindow: "各ノードの最近の通信記録を集計",
+    cumulativeUpload: "累計アップロード",
+    cumulativeDownload: "累計ダウンロード",
+    trafficTop5: "通信量 Top 5",
+    trafficRankCopy: "各ノードの累計アップロード・ダウンロード量で並べ替えます。",
+    peakAt: "ピーク {rate} · {time}",
+    todayAt: "今日 {time}",
+    yesterdayAt: "昨日 {time}",
+    trafficHistoryLoading: "ノード通信記録を集計中…",
+    trafficNoHistory: "通信記録はまだありません",
     aboutDescription: "Butterfly は WinUI 3 の抑制された階層と Mica 素材を Komari のライブデータと組み合わせ、明快で高速なレスポンシブ体験を提供します。",
     designLanguage: "WinUI デザイン言語",
     designLanguageCopy: "階層化された面、柔らかな角丸、明確な状態、正確な間隔で高密度なダッシュボードを構成します。",
@@ -629,12 +662,15 @@ const state = {
   statuses: {},
   nodeSamples: new Map(),
   networkSamples: [],
+  trafficHistory: new Map(),
+  trafficHistoryLoading: false,
+  trafficHistoryLoadedAt: 0,
   loading: true,
   error: null,
   connected: false,
   lastUpdated: 0,
-  currentView: "overview",
-  filter: "all",
+  currentView: initialView(),
+  filter: initialView() === "favorites" ? "favorites" : "all",
   query: "",
   sort: DEFAULT_CONFIG.default_sort,
   cardMode: safeStorageGet(STORAGE.cardMode) === "list" ? "list" : "grid",
@@ -670,6 +706,11 @@ function detectLanguage() {
 function shouldUseDemo() {
   const params = new URLSearchParams(location.search);
   return params.get("demo") === "1" || location.protocol === "file:";
+}
+
+function initialView() {
+  const view = new URLSearchParams(location.search).get("view");
+  return ["overview", "regions", "traffic", "favorites", "about"].includes(view) ? view : "overview";
 }
 
 function t(key, variables = {}) {
@@ -744,6 +785,27 @@ function formatBytes(value, decimals = 1) {
 
 function formatRate(value) {
   return `${formatBytes(Math.max(0, finiteNumber(value)))}/s`;
+}
+
+function formatTrafficTime(timestamp, withDay = false) {
+  const date = new Date(timestamp);
+  if (!Number.isFinite(date.getTime())) return t("unknown");
+  const time = date.toLocaleTimeString(state.language, { hour: "2-digit", minute: "2-digit", hour12: false });
+  if (!withDay) return time;
+  const today = new Date();
+  const startToday = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+  const startDate = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+  if (startDate === startToday) return t("todayAt", { time });
+  if (startDate === startToday - 86400000) return t("yesterdayAt", { time });
+  return `${date.toLocaleDateString(state.language, { month: "2-digit", day: "2-digit" })} ${time}`;
+}
+
+function niceTrafficMaximum(value) {
+  const safe = Math.max(1, finiteNumber(value, 1));
+  const magnitude = 10 ** Math.floor(Math.log10(safe));
+  const normalized = safe / magnitude;
+  const step = normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10;
+  return step * magnitude;
 }
 
 function formatDuration(seconds) {
@@ -1661,7 +1723,7 @@ function updateSamples() {
     pushSample(node.uuid, status ? status.cpu : 0);
   }
   const current = aggregateMetrics();
-  state.networkSamples.push({ upload: current.uploadRate, download: current.downloadRate });
+  state.networkSamples.push({ upload: current.uploadRate, download: current.downloadRate, time: Date.now() });
   state.networkSamples = state.networkSamples.slice(-36);
 }
 
@@ -1736,6 +1798,21 @@ function dualLineChart(first, second, width = 620, height = 130) {
     <polyline class="line" points="${p1}"/>
     <polyline class="line-secondary" points="${p2}"/>
   </svg>`;
+}
+
+function trafficChartPoints(values, maximum, width = 1000, height = 240) {
+  const source = values.length > 1 ? values : [values[0] || 0, values[0] || 0];
+  const safeMaximum = Math.max(1, maximum);
+  return source.map((value, index) => {
+    const x = (index / Math.max(source.length - 1, 1)) * width;
+    const y = height - clamp(value / safeMaximum, 0, 1) * height;
+    return `${x.toFixed(2)},${y.toFixed(2)}`;
+  }).join(" ");
+}
+
+function trafficAreaPath(values, maximum, width = 1000, height = 240) {
+  const points = trafficChartPoints(values, maximum, width, height).split(" ");
+  return `M ${points.join(" L ")} L ${width},${height} L 0,${height} Z`;
 }
 
 function radialRing(value) {
@@ -2159,13 +2236,148 @@ function renderFavoritesView(metrics) {
   </section>`;
 }
 
+function buildTrafficSeries() {
+  const histories = state.nodes
+    .map(node => state.trafficHistory.get(node.uuid) || [])
+    .filter(records => records.length > 0);
+
+  if (!histories.length) {
+    const fallback = state.networkSamples.length ? state.networkSamples : [{ upload: 0, download: 0, time: Date.now() }];
+    const start = Date.now() - Math.max(fallback.length - 1, 1) * state.config.poll_interval * 1000;
+    return fallback.map((sample, index) => ({
+      upload: Math.max(0, finiteNumber(sample.upload)),
+      download: Math.max(0, finiteNumber(sample.download)),
+      time: finiteNumber(sample.time, start + index * state.config.poll_interval * 1000),
+    }));
+  }
+
+  const count = Math.max(...histories.map(records => records.length), 1);
+  return Array.from({ length: count }, (_, index) => {
+    let upload = 0;
+    let download = 0;
+    const times = [];
+    for (const records of histories) {
+      const recordIndex = records.length - count + index;
+      if (recordIndex < 0 || !records[recordIndex]) continue;
+      const record = records[recordIndex];
+      upload += Math.max(0, finiteNumber(record.net_in));
+      download += Math.max(0, finiteNumber(record.net_out));
+      const time = new Date(record.time).getTime();
+      if (Number.isFinite(time)) times.push(time);
+    }
+    return { upload, download, time: times.length ? Math.max(...times) : Date.now() };
+  });
+}
+
+function enrichTrafficSeries(series, totals = null) {
+  let cumulativeUpload = 0;
+  let cumulativeDownload = 0;
+  const enriched = series.map((sample, index) => {
+    if (index > 0) {
+      const previous = series[index - 1];
+      const elapsed = clamp((sample.time - previous.time) / 1000, 1, 3600);
+      cumulativeUpload += (previous.upload + sample.upload) * 0.5 * elapsed;
+      cumulativeDownload += (previous.download + sample.download) * 0.5 * elapsed;
+    }
+    return { ...sample, cumulativeUpload, cumulativeDownload };
+  });
+  const uploadScale = cumulativeUpload > 0 && finiteNumber(totals?.totalUpload) > 0 ? finiteNumber(totals.totalUpload) / cumulativeUpload : 1;
+  const downloadScale = cumulativeDownload > 0 && finiteNumber(totals?.totalDownload) > 0 ? finiteNumber(totals.totalDownload) / cumulativeDownload : 1;
+  return enriched.map(sample => ({
+    ...sample,
+    cumulativeUpload: sample.cumulativeUpload * uploadScale,
+    cumulativeDownload: sample.cumulativeDownload * downloadScale,
+  }));
+}
+
+function trafficAxisLabels(maximum, formatter) {
+  return [1, 0.75, 0.5, 0.25, 0].map(ratio => `<span>${escapeHtml(formatter(maximum * ratio))}</span>`).join("");
+}
+
+function trafficTimeLabels(series) {
+  const count = Math.min(7, Math.max(2, series.length));
+  return Array.from({ length: count }, (_, index) => {
+    const sourceIndex = Math.round((index / Math.max(count - 1, 1)) * Math.max(series.length - 1, 0));
+    return `<span>${escapeHtml(formatTrafficTime(series[sourceIndex]?.time || Date.now()))}</span>`;
+  }).join("");
+}
+
+function renderTrafficChart(series, metrics) {
+  const enriched = enrichTrafficSeries(series, metrics);
+  const upload = enriched.map(sample => sample.upload);
+  const download = enriched.map(sample => sample.download);
+  const cumulativeUpload = enriched.map(sample => sample.cumulativeUpload);
+  const cumulativeDownload = enriched.map(sample => sample.cumulativeDownload);
+  const rateMaximum = niceTrafficMaximum(Math.max(...upload, ...download, 1));
+  const totalMaximum = Math.max(...cumulativeUpload, ...cumulativeDownload, 1) * 1.04;
+
+  return `<div class="traffic-chart-frame">
+    <div class="traffic-y-axis traffic-y-axis-left">${trafficAxisLabels(rateMaximum, value => formatRate(value))}</div>
+    <div class="traffic-plot">
+      <svg viewBox="0 0 1000 240" preserveAspectRatio="none" role="img" aria-label="${escapeHtml(t("recent24hTraffic"))}">
+        <path class="traffic-download-area" d="${trafficAreaPath(download, rateMaximum)}"/>
+        <path class="traffic-upload-area" d="${trafficAreaPath(upload, rateMaximum)}"/>
+        <polyline class="traffic-download-line" points="${trafficChartPoints(download, rateMaximum)}"/>
+        <polyline class="traffic-upload-line" points="${trafficChartPoints(upload, rateMaximum)}"/>
+        <polyline class="traffic-cumulative-download" points="${trafficChartPoints(cumulativeDownload, totalMaximum)}"/>
+        <polyline class="traffic-cumulative-upload" points="${trafficChartPoints(cumulativeUpload, totalMaximum)}"/>
+      </svg>
+    </div>
+    <div class="traffic-y-axis traffic-y-axis-right">${trafficAxisLabels(totalMaximum, value => formatBytes(value, 2))}</div>
+    <div class="traffic-time-axis">${trafficTimeLabels(enriched)}</div>
+  </div>`;
+}
+
+function trafficRankings() {
+  return state.nodes.map(node => {
+    const status = nodeStatus(node.uuid) || {};
+    const records = state.trafficHistory.get(node.uuid) || [];
+    const peakRecord = records.reduce((best, record) => {
+      const rate = Math.max(0, finiteNumber(record.net_in)) + Math.max(0, finiteNumber(record.net_out));
+      return !best || rate > best.rate ? { rate, time: record.time } : best;
+    }, null);
+    const upload = Math.max(0, finiteNumber(status.net_total_up));
+    const download = Math.max(0, finiteNumber(status.net_total_down));
+    return {
+      node,
+      upload,
+      download,
+      total: upload + download,
+      peakRate: peakRecord?.rate ?? Math.max(0, finiteNumber(status.net_in)) + Math.max(0, finiteNumber(status.net_out)),
+      peakTime: peakRecord?.time ?? status.time ?? Date.now(),
+    };
+  }).sort((a, b) => b.total - a.total).slice(0, 5);
+}
+
+function renderTrafficRankings() {
+  const rankings = trafficRankings();
+  if (!rankings.length) return `<div class="traffic-rank-empty">${icon("traffic", 22)}<span>${escapeHtml(t("trafficNoHistory"))}</span></div>`;
+  const maximum = Math.max(rankings[0]?.total || 0, 1);
+  return `<div class="traffic-rank-list">${rankings.map((entry, index) => `<button class="traffic-rank-row" type="button" data-node-uuid="${escapeHtml(entry.node.uuid)}">
+      <span class="traffic-rank-head"><span class="traffic-rank-name"><span class="traffic-rank-index">${index + 1}.</span>${escapeHtml(entry.node.name || entry.node.uuid)}</span><span class="traffic-rank-totals"><span>↑ ${escapeHtml(formatBytes(entry.upload, 2))}</span><span>↓ ${escapeHtml(formatBytes(entry.download, 2))}</span>${icon("traffic", 15)}</span></span>
+      <span class="traffic-rank-peak">${escapeHtml(t("peakAt", { rate: formatRate(entry.peakRate), time: formatTrafficTime(entry.peakTime, true) }))}</span>
+      <span class="traffic-rank-track"><span style="width:${Math.max(1.4, entry.total / maximum * 100).toFixed(2)}%"></span></span>
+    </button>`).join("")}</div>`;
+}
+
 function renderTrafficView(metrics) {
-  const download = state.networkSamples.map(sample => sample.download);
-  const upload = state.networkSamples.map(sample => sample.upload);
-  const chart = dualLineChart(download, upload, 900, 220);
+  const series = buildTrafficSeries();
   return `<section class="traffic-view">
-    <article class="traffic-chart-card panel"><div class="panel-heading"><div><div class="panel-title panel-title-accent">${escapeHtml(t("trafficOverview"))}</div><div class="bottom-stat-copy">${escapeHtml(t("trafficCopy"))}</div></div><div class="chart-legend"><span class="chart-legend-item"><span class="chart-legend-line"></span>${escapeHtml(t("download"))} ${escapeHtml(formatRate(metrics.downloadRate))}</span><span class="chart-legend-item"><span class="chart-legend-line" style="--legend-color:var(--cyan)"></span>${escapeHtml(t("upload"))} ${escapeHtml(formatRate(metrics.uploadRate))}</span></div></div>
-      <div class="traffic-chart-wrap"><div class="traffic-chart-svg">${chart.replace('class="area"', 'class="download-area"').replace('class="line"', 'class="download-line"').replace('class="line-secondary"', 'class="upload-line"')}</div></div>
+    <article class="traffic-dashboard panel">
+      <div class="traffic-dashboard-head"><div><div class="panel-title traffic-dashboard-title">${escapeHtml(t("recent24hTraffic"))}</div><div class="traffic-dashboard-copy">${escapeHtml(t("trafficWindow"))}</div></div>
+        <div class="traffic-dashboard-legend">
+          <span><i class="traffic-dot is-upload"></i>${escapeHtml(t("upload"))} <strong>${escapeHtml(formatRate(metrics.uploadRate))}</strong></span>
+          <span><i class="traffic-dot is-download"></i>${escapeHtml(t("download"))} <strong>${escapeHtml(formatRate(metrics.downloadRate))}</strong></span>
+          <span><i class="traffic-dash is-upload"></i>${escapeHtml(t("cumulativeUpload"))}</span>
+          <span><i class="traffic-dash is-download"></i>${escapeHtml(t("cumulativeDownload"))}</span>
+          <span class="traffic-total-summary">↑ ${escapeHtml(formatBytes(metrics.totalUpload, 2))} <b>↓ ${escapeHtml(formatBytes(metrics.totalDownload, 2))}</b></span>
+        </div>
+      </div>
+      <div class="traffic-chart-shell">${renderTrafficChart(series, metrics)}${state.trafficHistoryLoading ? `<div class="traffic-loading"><span></span>${escapeHtml(t("trafficHistoryLoading"))}</div>` : ""}</div>
+      <div class="traffic-ranking">
+        <div class="traffic-ranking-head"><div><h2>${escapeHtml(t("trafficTop5"))}</h2><p>${escapeHtml(t("trafficRankCopy"))}</p></div><span class="traffic-ranking-icon">${icon("list", 18)}</span></div>
+        ${renderTrafficRankings()}
+      </div>
     </article>
   </section>`;
 }
@@ -2270,6 +2482,39 @@ function saveFavorites() {
   safeStorageSet(STORAGE.favorites, JSON.stringify([...state.favorites]));
 }
 
+async function loadTrafficHistory(force = false) {
+  if (state.trafficHistoryLoading) return;
+  if (!force && state.trafficHistoryLoadedAt && Date.now() - state.trafficHistoryLoadedAt < 5 * 60 * 1000) return;
+  state.trafficHistoryLoading = true;
+  if (state.currentView === "traffic") renderApp();
+
+  try {
+    const history = new Map();
+    if (state.demoMode) {
+      for (const node of state.nodes) history.set(node.uuid, demoHistory(node.uuid));
+    } else {
+      let cursor = 0;
+      const workers = Array.from({ length: Math.min(4, Math.max(1, state.nodes.length)) }, async () => {
+        while (cursor < state.nodes.length) {
+          const node = state.nodes[cursor++];
+          try {
+            const result = await rpc.call("common:getNodeRecentStatus", { uuid: node.uuid }, 18000);
+            history.set(node.uuid, normalizeRecentRecords(result?.records, node.uuid));
+          } catch {
+            history.set(node.uuid, []);
+          }
+        }
+      });
+      await Promise.all(workers);
+    }
+    state.trafficHistory = history;
+    state.trafficHistoryLoadedAt = Date.now();
+  } finally {
+    state.trafficHistoryLoading = false;
+    if (state.currentView === "traffic") renderApp();
+  }
+}
+
 async function openDrawer(uuid) {
   if (!getNodeByUuid(uuid)) return;
   resetMobileNavVisibility();
@@ -2371,6 +2616,7 @@ function setView(view) {
   else if (state.filter === "favorites") state.filter = "all";
   resetMobileNavVisibility();
   renderApp();
+  if (view === "traffic") void loadTrafficHistory();
   window.scrollTo({ top: 0, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
 }
 
@@ -2702,6 +2948,7 @@ async function initialize() {
     else await loadLiveData();
     state.loading = false;
     renderApp();
+    if (state.currentView === "traffic") void loadTrafficHistory();
     if (new URLSearchParams(location.search).get("globe") === "1") openGlobe();
     startTimers();
   } catch (error) {
@@ -2738,7 +2985,11 @@ function loadDemoData() {
   state.statuses = demoStatuses();
   state.connected = true;
   state.lastUpdated = Date.now();
-  state.networkSamples = Array.from({ length: 30 }, (_, index) => ({ upload: seededSeries(31, 30, 75_000_000, 45_000_000, 5_000_000, 150_000_000)[index], download: seededSeries(77, 30, 110_000_000, 64_000_000, 8_000_000, 220_000_000)[index] }));
+  state.networkSamples = Array.from({ length: 30 }, (_, index) => ({
+    upload: seededSeries(31, 30, 75_000_000, 45_000_000, 5_000_000, 150_000_000)[index],
+    download: seededSeries(77, 30, 110_000_000, 64_000_000, 8_000_000, 220_000_000)[index],
+    time: Date.now() - (29 - index) * 50 * 60 * 1000,
+  }));
   for (const [index, node] of state.nodes.entries()) state.nodeSamples.set(node.uuid, seededSeries(index * 53 + 19, 24, state.statuses[node.uuid].cpu || 30, 28, 4, 96));
   applyAppearance();
 }
@@ -2808,9 +3059,10 @@ function demoHistory(uuid) {
   const memory = seededSeries(uuid.length * 29, 36, percent(status.ram, status.ram_total), 12, 10, 96);
   const input = seededSeries(uuid.length * 41, 36, status.net_in, Math.max(status.net_in * 0.7, 1), 1_000_000, status.net_in * 2.2);
   const output = seededSeries(uuid.length * 57, 36, status.net_out, Math.max(status.net_out * 0.65, 1), 1_000_000, status.net_out * 2.2);
+  const intervalSeconds = 40 * 60;
   return cpu.map((value, index) => ({
     client: uuid,
-    time: new Date(Date.now() - (35 - index) * 5 * 60 * 1000).toISOString(),
+    time: new Date(Date.now() - (35 - index) * intervalSeconds * 1000).toISOString(),
     cpu: value,
     gpu: 0,
     ram: node.mem_total * memory[index] / 100,
@@ -2830,7 +3082,7 @@ function demoHistory(uuid) {
     process: status.process,
     connections: status.connections,
     connections_udp: status.connections_udp,
-    uptime: Math.max(0, status.uptime - (35 - index) * 300),
+    uptime: Math.max(0, status.uptime - (35 - index) * intervalSeconds),
     message: "",
   }));
 }

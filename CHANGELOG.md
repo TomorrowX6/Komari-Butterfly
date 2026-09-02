@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.4.0 — 2026-09-02
+
+- Rebuilt the traffic view around a responsive dual-axis chart inspired by Komari's traffic dashboard.
+- Added recent aggregate upload and download rate lines with cumulative traffic overlays, adaptive axes, and localized time labels.
+- Added a traffic-usage Top 5 ranking with per-node upload/download totals, peak rates, timestamps, and proportional usage bars.
+- Traffic history now loads on demand with bounded concurrency and falls back to live samples while records are loading or unavailable.
+- Added direct preview links through `?view=traffic` and refined the traffic layout for desktop and mobile screens.
+
 ## 1.3.0 — 2026-09-02
 
 - Added direction-aware bottom navigation: it moves out of the content area while scrolling down, returns on upward motion or at page boundaries, and stays hidden behind search, sidebar, globe, node-detail overlays, and the on-screen keyboard.

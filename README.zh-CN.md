@@ -28,7 +28,7 @@
 
 ## 安装
 
-1. 从 GitHub Releases 下载 `komari-butterfly-v1.3.0.zip`。
+1. 从 GitHub Releases 下载 `komari-butterfly-v1.4.0.zip`。
 2. 进入 Komari 管理后台，在主题管理中上传 ZIP。
 3. 选择 **Komari Butterfly** 并保存。
 
@@ -68,8 +68,8 @@ npm run package
 打包后生成：
 
 ```text
-release/komari-butterfly-v1.3.0.zip
-release/komari-butterfly-v1.3.0.zip.sha256
+release/komari-butterfly-v1.4.0.zip
+release/komari-butterfly-v1.4.0.zip.sha256
 ```
 
 ## 发布
@@ -77,7 +77,7 @@ release/komari-butterfly-v1.3.0.zip.sha256
 更新 `komari-theme.json` 中的 `version`，提交后创建对应标签并推送：
 
 ```bash
-git tag v1.3.0
+git tag v1.4.0
 git push origin main --tags
 ```
 

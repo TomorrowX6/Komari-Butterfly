@@ -4,7 +4,7 @@
 
 - Name: Komari Butterfly
 - Short: `Butterfly`
-- Version: `1.3.0`
+- Version: `1.4.0`
 - Author: `TomorrowX6`
 - Repository: `https://github.com/TomorrowX6/Komari-Butterfly`
 
@@ -12,8 +12,8 @@
 
 Komari Butterfly is a responsive WinUI 3 and Mica-inspired theme with live metrics, a tonal light/dark surface system, an interactive geographic node globe, latency distribution, region and traffic views, favorites, managed configuration, and a node history drawer.
 
-This release focuses on phone and touch use: compact search and sort labels, horizontally snapping KPI cards, sticky node tools, direction-aware safe-area navigation, a swipe-to-dismiss node sheet, an ultra-short portrait layout, a full-screen region carousel, automatic selected-region centering, and a reduced-cost globe renderer. Short landscape screens receive a dedicated two-pane layout.
+Version 1.4.0 rebuilds the traffic workspace with a responsive dual-axis 24-hour chart, upload/download and cumulative traffic series, localized time axes, and an interactive Top 5 ranking with node totals, peak rates, timestamps, and proportional usage bars. Recent records load on demand with bounded concurrency and a live-sample fallback.
 
 The release package contains `komari-theme.json`, `preview.png`, and `dist/index.html` at the required paths. The SHA256 value in `docs/theme-market-entry.json` is generated from the release ZIP by the repository packaging script.
 
-Release SHA256: `62e7e2762d002b100ce1a24f4047102e9bf03d160eba78e54115f742e9f9d482`
+Release SHA256: `8b01a4dc791dfeb85b9981affb34d8e72db02c05b7f725a0ce42373d94a275b8`

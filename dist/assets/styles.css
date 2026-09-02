@@ -6165,3 +6165,486 @@ svg {
     display: none;
   }
 }
+
+/* Traffic dashboard: dual-axis 24-hour chart and per-node usage ranking. */
+.traffic-dashboard {
+  --traffic-upload: #34b982;
+  --traffic-download: #1398f5;
+  padding: 0;
+  overflow: hidden;
+  border-color: color-mix(in srgb, var(--line-strong) 84%, transparent);
+}
+
+.traffic-dashboard-head {
+  display: flex;
+  min-height: 78px;
+  padding: 19px 20px 12px;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.traffic-dashboard-title {
+  color: var(--text-strong);
+  font-size: 15px;
+  font-weight: 730;
+  letter-spacing: -0.01em;
+}
+
+.traffic-dashboard-copy {
+  margin-top: 3px;
+  color: var(--muted-2);
+  font-size: 9px;
+}
+
+.traffic-dashboard-legend {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px 16px;
+  color: var(--muted);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.traffic-dashboard-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.traffic-dashboard-legend strong {
+  color: var(--text);
+  font-weight: 660;
+}
+
+.traffic-dot {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 50%;
+  background: var(--traffic-download);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--traffic-download) 12%, transparent);
+}
+
+.traffic-dot.is-upload {
+  background: var(--traffic-upload);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--traffic-upload) 12%, transparent);
+}
+
+.traffic-dash {
+  width: 16px;
+  height: 0;
+  flex: 0 0 16px;
+  border-top: 2px dashed var(--traffic-download);
+}
+
+.traffic-dash.is-upload {
+  border-color: var(--traffic-upload);
+}
+
+.traffic-total-summary {
+  padding-left: 2px;
+  color: var(--text);
+  font-weight: 690;
+}
+
+.traffic-total-summary b {
+  color: var(--muted);
+  font-weight: 690;
+}
+
+.traffic-chart-shell {
+  position: relative;
+  padding: 0 18px 22px;
+}
+
+.traffic-chart-frame {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 58px minmax(0, 1fr) 66px;
+  grid-template-rows: 250px 24px;
+}
+
+.traffic-plot {
+  position: relative;
+  grid-column: 2;
+  grid-row: 1;
+  overflow: hidden;
+  border-block: 1px solid color-mix(in srgb, var(--line) 75%, transparent);
+  background:
+    linear-gradient(to bottom, transparent calc(25% - .5px), var(--line) 25%, transparent calc(25% + .5px), transparent calc(50% - .5px), var(--line) 50%, transparent calc(50% + .5px), transparent calc(75% - .5px), var(--line) 75%, transparent calc(75% + .5px)),
+    linear-gradient(to right, transparent calc(16.666% - .5px), color-mix(in srgb, var(--line) 72%, transparent) 16.666%, transparent calc(16.666% + .5px), transparent calc(33.333% - .5px), color-mix(in srgb, var(--line) 72%, transparent) 33.333%, transparent calc(33.333% + .5px), transparent calc(50% - .5px), color-mix(in srgb, var(--line) 72%, transparent) 50%, transparent calc(50% + .5px), transparent calc(66.666% - .5px), color-mix(in srgb, var(--line) 72%, transparent) 66.666%, transparent calc(66.666% + .5px), transparent calc(83.333% - .5px), color-mix(in srgb, var(--line) 72%, transparent) 83.333%, transparent calc(83.333% + .5px));
+}
+
+.traffic-plot::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent 58%, color-mix(in srgb, var(--traffic-download) 4%, transparent));
+}
+
+.traffic-plot svg {
+  position: absolute;
+  inset: 8px 0 5px;
+  z-index: 1;
+  width: 100%;
+  height: calc(100% - 13px);
+  overflow: visible;
+}
+
+.traffic-download-area {
+  fill: color-mix(in srgb, var(--traffic-download) 8%, transparent);
+}
+
+.traffic-upload-area {
+  fill: color-mix(in srgb, var(--traffic-upload) 5%, transparent);
+}
+
+.traffic-download-line,
+.traffic-upload-line,
+.traffic-cumulative-download,
+.traffic-cumulative-upload {
+  fill: none;
+  vector-effect: non-scaling-stroke;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.traffic-download-line {
+  stroke: var(--traffic-download);
+  stroke-width: 2.3;
+}
+
+.traffic-upload-line {
+  stroke: var(--traffic-upload);
+  stroke-width: 2.3;
+}
+
+.traffic-cumulative-download,
+.traffic-cumulative-upload {
+  stroke: var(--traffic-download);
+  stroke-width: 1.7;
+  stroke-dasharray: 7 6;
+}
+
+.traffic-cumulative-upload {
+  stroke: var(--traffic-upload);
+}
+
+.traffic-y-axis {
+  display: flex;
+  padding: 1px 8px 1px 0;
+  grid-row: 1;
+  flex-direction: column;
+  justify-content: space-between;
+  color: var(--muted-2);
+  font-size: 8px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.traffic-y-axis-left {
+  grid-column: 1;
+  text-align: right;
+}
+
+.traffic-y-axis-right {
+  padding-right: 0;
+  padding-left: 8px;
+  grid-column: 3;
+  text-align: left;
+}
+
+.traffic-time-axis {
+  display: flex;
+  padding-top: 7px;
+  grid-column: 2;
+  grid-row: 2;
+  align-items: flex-start;
+  justify-content: space-between;
+  color: var(--muted-2);
+  font-size: 8px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.traffic-loading {
+  position: absolute;
+  right: 30px;
+  bottom: 41px;
+  z-index: 3;
+  display: inline-flex;
+  min-height: 28px;
+  padding: 0 10px;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--line);
+  border-radius: 99px;
+  color: var(--muted);
+  font-size: 8px;
+  background: var(--mica-strong);
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: blur(14px);
+}
+
+.traffic-loading > span {
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--line-strong);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 700ms linear infinite;
+}
+
+.traffic-ranking {
+  padding: 20px;
+  border-top: 1px solid var(--line);
+}
+
+.traffic-ranking-head {
+  display: flex;
+  margin-bottom: 12px;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.traffic-ranking-head h2 {
+  margin: 0;
+  color: var(--text-strong);
+  font-size: 15px;
+  font-weight: 730;
+  letter-spacing: -0.01em;
+}
+
+.traffic-ranking-head p {
+  margin: 3px 0 0;
+  color: var(--muted-2);
+  font-size: 9px;
+}
+
+.traffic-ranking-icon {
+  display: grid;
+  width: 31px;
+  height: 31px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  color: var(--muted-2);
+  background: var(--surface-subtle);
+}
+
+.traffic-rank-list {
+  display: grid;
+}
+
+.traffic-rank-row {
+  display: grid;
+  width: 100%;
+  padding: 11px 0 13px;
+  cursor: pointer;
+  border: 0;
+  border-radius: 10px;
+  color: inherit;
+  text-align: left;
+  background: transparent;
+  transition: background 150ms ease, transform 150ms ease;
+}
+
+.traffic-rank-row:hover {
+  padding-inline: 10px;
+  background: var(--surface-subtle);
+  transform: translateY(-1px);
+}
+
+.traffic-rank-head {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.traffic-rank-name {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.traffic-rank-index {
+  margin-right: 5px;
+  color: var(--muted-2);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.traffic-rank-totals {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.traffic-rank-totals span:first-child {
+  color: color-mix(in srgb, var(--traffic-upload) 88%, var(--text));
+}
+
+.traffic-rank-totals span:nth-child(2) {
+  color: color-mix(in srgb, var(--traffic-download) 88%, var(--text));
+}
+
+.traffic-rank-totals svg {
+  color: var(--muted-2);
+}
+
+.traffic-rank-peak {
+  margin-top: 3px;
+  color: var(--muted-2);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+}
+
+.traffic-rank-track {
+  position: relative;
+  height: 6px;
+  margin-top: 8px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: color-mix(in srgb, var(--line-strong) 72%, transparent);
+}
+
+.traffic-rank-track > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 74%, var(--traffic-download)), var(--accent));
+  box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.traffic-rank-empty {
+  display: flex;
+  min-height: 120px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--muted-2);
+  font-size: 10px;
+}
+
+@media (max-width: 960px) {
+  .traffic-dashboard-head {
+    display: grid;
+    gap: 10px;
+  }
+
+  .traffic-dashboard-legend {
+    justify-content: flex-start;
+  }
+
+  .traffic-chart-frame {
+    grid-template-rows: 230px 24px;
+  }
+}
+
+@media (max-width: 720px) {
+  .traffic-dashboard-head {
+    min-height: 0;
+    padding: 15px 14px 10px;
+  }
+
+  .traffic-dashboard-copy,
+  .traffic-ranking-head p {
+    display: none;
+  }
+
+  .traffic-dashboard-legend {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px 10px;
+    font-size: 8.5px;
+  }
+
+  .traffic-total-summary {
+    grid-column: 1 / -1;
+  }
+
+  .traffic-chart-shell {
+    padding: 4px 8px 14px;
+  }
+
+  .traffic-chart-frame {
+    grid-template-columns: 43px minmax(0, 1fr) 49px;
+    grid-template-rows: 205px 22px;
+  }
+
+  .traffic-y-axis,
+  .traffic-time-axis {
+    font-size: 7px;
+  }
+
+  .traffic-y-axis {
+    padding-right: 5px;
+  }
+
+  .traffic-y-axis-right {
+    padding-right: 0;
+    padding-left: 5px;
+  }
+
+  .traffic-time-axis span:nth-child(even) {
+    display: none;
+  }
+
+  .traffic-ranking {
+    padding: 15px 14px;
+  }
+
+  .traffic-ranking-head {
+    margin-bottom: 6px;
+  }
+
+  .traffic-ranking-head h2,
+  .traffic-dashboard-title {
+    font-size: 13px;
+  }
+
+  .traffic-ranking-icon {
+    width: 28px;
+    height: 28px;
+  }
+
+  .traffic-rank-row {
+    padding-block: 10px 12px;
+  }
+
+  .traffic-rank-head {
+    display: grid;
+    gap: 2px;
+  }
+
+  .traffic-rank-totals {
+    gap: 6px;
+    font-size: 9px;
+  }
+
+  .traffic-rank-totals svg {
+    display: none;
+  }
+
+  .traffic-loading {
+    right: 15px;
+    bottom: 31px;
+  }
+}
