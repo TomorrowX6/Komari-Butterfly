@@ -16,4 +16,4 @@ Version 1.4.0 rebuilds the traffic workspace with a responsive dual-axis 24-hour
 
 The release package contains `komari-theme.json`, `preview.png`, and `dist/index.html` at the required paths. The SHA256 value in `docs/theme-market-entry.json` is generated from the release ZIP by the repository packaging script.
 
-Release SHA256: `9c79653c0bdde17a7e41da38c351ecb7cea71f53e54fe9465e41098a20140add`
+Release SHA256: `c00fb19f00afeb21798036c4c3404b215b189147878577038f86262f200c7819`

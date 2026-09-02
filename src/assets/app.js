@@ -573,29 +573,52 @@ function butterflyLogo(extra = "") {
 function networkArt() {
   return `<svg class="network-art" viewBox="0 0 760 360" aria-hidden="true">
     <defs>
-      <radialGradient id="oceanGradient" cx="47%" cy="42%" r="62%"><stop stop-color="#3566C7"/><stop offset=".58" stop-color="#173E88"/><stop offset="1" stop-color="#081D48"/></radialGradient>
-      <linearGradient id="landGradient" x1="190" y1="78" x2="515" y2="286"><stop stop-color="#C7DCFF"/><stop offset=".45" stop-color="#73A1E1"/><stop offset="1" stop-color="#3E6DB7"/></linearGradient>
-      <linearGradient id="landGradientDark" x1="190" y1="78" x2="515" y2="286"><stop stop-color="#7186AA"/><stop offset=".48" stop-color="#536C97"/><stop offset="1" stop-color="#364C75"/></linearGradient>
-      <linearGradient id="arcGradient" x1="140" y1="70" x2="625" y2="270"><stop stop-color="#8BE5E0"/><stop offset=".48" stop-color="#9C8CFF"/><stop offset="1" stop-color="#FFD7A2"/></linearGradient>
-      <radialGradient id="glowGradient"><stop stop-color="#9EAFFF" stop-opacity=".7"/><stop offset="1" stop-color="#5672E8" stop-opacity="0"/></radialGradient>
-      <filter id="softGlow"><feGaussianBlur stdDeviation="5"/></filter>
+      <radialGradient id="oceanGradient" cx="34%" cy="27%" r="79%"><stop stop-color="#70A9F4"/><stop offset=".3" stop-color="#3974CF"/><stop offset=".65" stop-color="#17478F"/><stop offset="1" stop-color="#071C48"/></radialGradient>
+      <linearGradient id="landGradient" x1="330" y1="92" x2="526" y2="274"><stop stop-color="#E0EDFF"/><stop offset=".4" stop-color="#A9C9F4"/><stop offset=".72" stop-color="#76A4E1"/><stop offset="1" stop-color="#4E7FC8"/></linearGradient>
+      <linearGradient id="landGradientDark" x1="330" y1="92" x2="526" y2="274"><stop stop-color="#9BACCB"/><stop offset=".45" stop-color="#748AB2"/><stop offset="1" stop-color="#465F8B"/></linearGradient>
+      <linearGradient id="arcGradient" x1="325" y1="106" x2="563" y2="245"><stop stop-color="#55F0DF"/><stop offset=".52" stop-color="#69DFFF"/><stop offset="1" stop-color="#9EB8FF"/></linearGradient>
+      <radialGradient id="glowGradient"><stop stop-color="#8FAEFF" stop-opacity=".62"/><stop offset=".58" stop-color="#6F8DF2" stop-opacity=".2"/><stop offset="1" stop-color="#5672E8" stop-opacity="0"/></radialGradient>
+      <linearGradient id="atmosphereGradient" x1="318" y1="86" x2="568" y2="283"><stop stop-color="#CBE0FF" stop-opacity=".86"/><stop offset=".45" stop-color="#80A8FF" stop-opacity=".38"/><stop offset="1" stop-color="#5369D8" stop-opacity=".06"/></linearGradient>
+      <radialGradient id="sphereSheen" cx="32%" cy="23%" r="72%"><stop stop-color="#FFFFFF" stop-opacity=".33"/><stop offset=".42" stop-color="#B8D8FF" stop-opacity=".08"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/></radialGradient>
+      <linearGradient id="sphereShade" x1="386" y1="98" x2="568" y2="254"><stop stop-color="#041A4B" stop-opacity="0"/><stop offset=".62" stop-color="#031638" stop-opacity=".08"/><stop offset="1" stop-color="#020B24" stop-opacity=".52"/></linearGradient>
+      <filter id="softGlow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="9"/></filter>
+      <filter id="globeShadow" x="-30%" y="-30%" width="170%" height="180%"><feDropShadow dx="0" dy="14" stdDeviation="12" flood-color="#061535" flood-opacity=".34"/></filter>
       <clipPath id="globeClip"><circle cx="435" cy="190" r="156"/></clipPath>
+      <g id="continentShapes">
+        <path d="M283 129c9-19 23-36 40-49 17-12 37-21 57-25l17 6 12 12 20 3 12 13-8 12-18 3-10 11-18-1-13 10-7 17-18 7-9 15-11-4-3-14-16-6-10-12-17-3-4-13 4-12Z"/>
+        <path d="M349 158l17-8 15 5 7 12 17 5 9 13-8 10-4 22-10 19-7 25-10 17-9-12 2-18-8-19-5-22-11-16 4-13-6-11 7-9Z"/>
+        <path d="M401 70l13-11 17 2 11 10-3 15-13 10-17-5-8-21Z"/>
+        <path d="M432 119l11-10 17 1 8 7 14-2 8 7-5 9-13 2-8 10-13-3-8 7-12-7 4-10-3-11Z"/>
+        <path d="M451 145l22-8 20 9 13 16-8 18-6 28-13 22-14 22-10-10-1-23-9-18-10-22 8-19 8-15Z"/>
+        <path d="M481 111l17-17 20 2 12 9 17-2 18 12 15 2 13 12-7 12-19 2-8 10-14-1-14 13-13-5-8-16-17-4-7-12-15-5-2-9 12-3Z"/>
+        <path d="M511 172l15-7 16 9 10 14-7 12-15-3-8-11-11-14Z"/>
+        <path d="M529 225l20-11 22 5 13 15-6 19-20 8-20-8-9-16v-12Z"/>
+        <path d="M499 230l6 7-3 15-7 2-4-11 8-13ZM582 161l7 7-4 14-7-2-1-11 5-8ZM419 130l5-8 6 5-3 10-8-7Z"/>
+      </g>
     </defs>
-    <circle cx="435" cy="190" r="178" fill="url(#glowGradient)" filter="url(#softGlow)"/>
-    <circle cx="435" cy="190" r="156" fill="url(#oceanGradient)" stroke="rgba(189,211,255,.46)"/>
+    <ellipse class="orbit orbit-back" cx="435" cy="190" rx="226" ry="94" transform="rotate(-16 435 190)"/>
+    <circle class="globe-glow" cx="435" cy="190" r="184" fill="url(#glowGradient)" filter="url(#softGlow)"/>
+    <circle class="globe-disc" cx="435" cy="190" r="156" fill="url(#oceanGradient)" filter="url(#globeShadow)"/>
     <g clip-path="url(#globeClip)">
-      <ellipse class="grid-line" cx="435" cy="190" rx="145" ry="54"/><ellipse class="grid-line" cx="435" cy="190" rx="145" ry="104"/>
-      <ellipse class="grid-line" cx="435" cy="190" rx="63" ry="151"/><ellipse class="grid-line" cx="435" cy="190" rx="112" ry="151"/>
-      <path class="grid-line" d="M282 190h306"/><path class="grid-line" d="M300 134h270M302 246h266"/>
-      <path class="land" d="M330 95l28-20 49 2 20 17-18 22-31-5-18 22-25-8-22-20 17-10Zm102 23 23-18 23 6 8 21-12 17-4 35-17 6-13-25-19-11 11-31Zm69-19 48 17 14 27-9 27-20-4-15-21-19-11-17-22 18-10Zm-87 89 34 8 21 28-9 45-18 27-18-10-9-34-16-30 15-34Zm-83-22 29-15 28 9 8 29-21 16-11 29-22-18-15-27 4-23Zm168 19 22-8 33 13 18 28-7 34-26 7-14-18-30-10-13-25 17-21Z"/>
-      <path class="arc" d="M345 153 Q432 48 528 133"/><path class="arc" d="M337 168 Q438 91 562 204"/><path class="arc" d="M380 237 Q488 103 540 171"/><path class="arc" d="M310 205 Q434 110 526 243"/><path class="arc" d="M374 125 Q504 62 569 178"/>
+      <ellipse class="grid-line" cx="435" cy="190" rx="149" ry="48"/>
+      <ellipse class="grid-line" cx="435" cy="190" rx="149" ry="100"/>
+      <ellipse class="grid-line" cx="435" cy="190" rx="57" ry="154"/>
+      <ellipse class="grid-line" cx="435" cy="190" rx="106" ry="154"/>
+      <use href="#continentShapes" class="land-shadow" transform="translate(3 4)"/>
+      <use href="#continentShapes" class="land"/>
+      <ellipse class="sphere-sheen" cx="382" cy="135" rx="128" ry="148" fill="url(#sphereSheen)"/>
+      <ellipse class="sphere-shade" cx="515" cy="204" rx="108" ry="166" fill="url(#sphereShade)"/>
+      <path class="arc arc-major" d="M336 157Q392 102 448 137"/>
+      <path class="arc arc-major arc-reverse" d="M336 157Q442 48 548 148"/>
+      <path class="arc arc-major" d="M375 226Q448 103 548 148"/>
+      <path class="arc arc-secondary arc-reverse" d="M375 226Q421 145 465 180"/>
+      <path class="arc arc-secondary" d="M448 137Q506 96 548 148"/>
+      <path class="arc arc-secondary arc-reverse" d="M465 180Q526 151 550 232"/>
+      <path class="arc arc-secondary" d="M448 137Q521 122 550 232"/>
     </g>
-    <ellipse class="orbit" cx="435" cy="190" rx="214" ry="92" transform="rotate(-15 435 190)"/>
-    <ellipse class="orbit-strong" cx="435" cy="190" rx="202" ry="128" transform="rotate(22 435 190)"/>
-    <g fill="#AEE8E3"><circle cx="345" cy="153" r="3.4"/><circle class="node-pulse" cx="345" cy="153" r="8" opacity=".4"/></g>
-    <g fill="#A99BFF"><circle cx="528" cy="133" r="3.4"/><circle class="node-pulse" cx="528" cy="133" r="8" opacity=".4"/></g>
-    <g fill="#FFD7A2"><circle cx="562" cy="204" r="3.4"/><circle class="node-pulse" cx="562" cy="204" r="8" opacity=".4"/></g>
-    <g fill="#8FE5D2"><circle cx="380" cy="237" r="3.4"/><circle class="node-pulse" cx="380" cy="237" r="8" opacity=".4"/></g>
+    <circle class="sphere-rim" cx="435" cy="190" r="156"/>
+    <circle class="atmosphere" cx="435" cy="190" r="160"/>
+    <ellipse class="orbit-strong" cx="435" cy="190" rx="218" ry="102" transform="rotate(22 435 190)"/>
   </svg>`;
 }
 
@@ -684,6 +707,7 @@ const state = {
   globeOpen: false,
   globeSelectedRegion: null,
   mobileSearchOpen: false,
+  notificationsOpen: false,
   pollTimer: null,
   clockTimer: null,
   demoMode: shouldUseDemo(),
@@ -1118,6 +1142,7 @@ function refreshOpenGlobe() {
 
 function openGlobe() {
   resetMobileNavVisibility();
+  state.notificationsOpen = false;
   state.globeOpen = true;
   renderGlobePortal();
   document.body.style.overflow = "hidden";
@@ -1887,7 +1912,8 @@ function renderApp() {
   const userName = state.userInfo?.logged_in ? state.userInfo.username || "Admin" : t("signIn");
   const sidebarClass = state.sidebarCollapsed ? " sidebar-collapsed" : "";
   const openClass = state.sidebarOpen ? " sidebar-open" : "";
-  const alertCount = buildAlerts().length;
+  const alerts = buildAlerts();
+  const alertCount = alerts.length;
   const viewClass = ` view-${state.currentView}`;
   const overlayClass = state.drawerUuid ? " has-mobile-overlay" : "";
   const mobileNavClass = mobileNavHidden ? " mobile-nav-hidden" : "";
@@ -1920,7 +1946,7 @@ function renderApp() {
     </aside>
     <button class="sidebar-scrim" type="button" data-action="close-sidebar" aria-label="${escapeHtml(t("close"))}"></button>
     <main class="app-main">
-      <header class="topbar${state.mobileSearchOpen ? " is-mobile-search-open" : ""}">
+      <header class="topbar${state.mobileSearchOpen ? " is-mobile-search-open" : ""}${state.notificationsOpen ? " is-notification-open" : ""}">
         <button class="mobile-brand" type="button" data-view="overview" aria-label="${escapeHtml(brand)}">
           <span class="mobile-brand-mark">${butterflyLogo()}</span>
           <span class="mobile-brand-copy"><strong>${escapeHtml(brand)}</strong><small>${escapeHtml(currentViewTitle)}</small></span>
@@ -1932,9 +1958,10 @@ function renderApp() {
           <button class="icon-button" type="button" data-action="refresh" aria-label="${escapeHtml(t("refresh"))}">${icon("refresh")}</button>
           <button class="icon-button mobile-search-button" type="button" data-action="toggle-mobile-search" aria-expanded="${state.mobileSearchOpen}" aria-label="${escapeHtml(t("mobileSearch"))}">${icon("search")}</button>
           <button class="icon-button" type="button" data-action="toggle-theme" aria-label="${escapeHtml(t("themeToggle"))}"></button>
-          <button class="icon-button${alertCount ? " has-dot" : ""}" type="button" data-action="show-alerts" aria-label="${escapeHtml(t("recentAlerts"))}">${icon("bell")}</button>
+          <button class="icon-button notification-button${alertCount ? " has-dot" : ""}${state.notificationsOpen ? " is-active" : ""}" type="button" data-action="toggle-notifications" aria-expanded="${state.notificationsOpen}" aria-controls="notification-popover" aria-label="${escapeHtml(t("recentAlerts"))}">${icon("bell")}</button>
           <a class="action-button" href="/admin">${icon("user", 16)}<span>${escapeHtml(state.userInfo?.logged_in ? t("admin") : t("signIn"))}</span></a>
         </div>
+        ${state.notificationsOpen ? renderNotificationPopover(alerts) : ""}
         <div class="mobile-search-row">
           <label class="mobile-search-field">${icon("search")}<span class="sr-only">${escapeHtml(t("searchNodes"))}</span><input id="mobile-search" type="search" value="${escapeHtml(state.query)}" placeholder="${escapeHtml(t("searchNodes"))}" autocomplete="off" autocapitalize="none" spellcheck="false" enterkeyhint="search"/></label>
           <button class="icon-button mobile-search-close" type="button" data-action="close-mobile-search" aria-label="${escapeHtml(t("closeSearch"))}">${icon("close")}</button>
@@ -2170,9 +2197,36 @@ function buildAlerts() {
   return alerts.sort((a, b) => new Date(b.time || 0) - new Date(a.time || 0));
 }
 
+function renderNotificationPopover(alerts = buildAlerts()) {
+  const visible = alerts.slice(0, 8);
+  return `<button class="notification-scrim" type="button" data-action="close-notifications" aria-label="${escapeHtml(t("close"))}"></button>
+    <section class="notification-popover" id="notification-popover" role="dialog" aria-modal="false" aria-label="${escapeHtml(t("recentAlerts"))}" tabindex="-1">
+      <header class="notification-popover-head">
+        <span class="notification-heading-icon">${icon("bell", 17)}</span>
+        <span class="notification-heading-copy"><strong>${escapeHtml(t("recentAlerts"))}</strong><small>${alertCountLabel(alerts.length)}</small></span>
+        <button class="notification-close" type="button" data-action="close-notifications" aria-label="${escapeHtml(t("close"))}">${icon("close", 15)}</button>
+      </header>
+      ${visible.length ? `<div class="notification-list">${visible.map(alert => {
+        const color = alert.severity === "danger" ? "var(--red)" : alert.severity === "offline" ? "var(--muted-2)" : "var(--amber)";
+        return `<button class="notification-item" type="button" data-node-uuid="${escapeHtml(alert.uuid)}">
+          <span class="notification-item-icon" style="--notification-color:${color}">${icon(alert.severity === "offline" ? "info" : "warning", 14)}</span>
+          <span class="notification-item-copy"><strong>${escapeHtml(alert.title)}</strong><small>${escapeHtml(alert.message)}</small></span>
+          <time>${escapeHtml(formatRelativeTime(alert.time))}</time>
+        </button>`;
+      }).join("")}</div>
+      <button class="notification-view-all" type="button" data-action="view-alerts-panel">${escapeHtml(t("viewAll"))}${icon("arrowRight", 14)}</button>` : `<div class="notification-empty"><span>${icon("shield", 25)}</span><strong>${escapeHtml(t("noAlerts"))}</strong></div>`}
+    </section>`;
+}
+
+function alertCountLabel(count) {
+  if (state.language === "zh-CN") return `${count} 条通知`;
+  if (state.language === "ja") return `${count} 件の通知`;
+  return `${count} notification${count === 1 ? "" : "s"}`;
+}
+
 function renderAlertsPanel() {
   const alerts = buildAlerts().slice(0, 4);
-  return `<section class="dashboard-alerts side-panel panel" id="alerts-panel"><div class="panel-heading"><div class="panel-title panel-title-accent">${escapeHtml(t("recentAlerts"))}</div><button class="panel-link" type="button" data-action="show-alerts">${escapeHtml(t("viewAll"))}</button></div>
+  return `<section class="dashboard-alerts side-panel panel" id="alerts-panel"><div class="panel-heading"><div class="panel-title panel-title-accent">${escapeHtml(t("recentAlerts"))}</div><button class="panel-link" type="button" data-action="toggle-notifications">${escapeHtml(t("viewAll"))}</button></div>
     ${alerts.length ? `<div class="alert-list">${alerts.map(alert => {
       const color = alert.severity === "danger" ? "var(--red)" : alert.severity === "offline" ? "var(--muted-2)" : "var(--amber)";
       return `<button class="alert-item" type="button" data-node-uuid="${escapeHtml(alert.uuid)}"><span class="alert-icon" style="--alert-color:${color}">${icon(alert.severity === "offline" ? "info" : "warning", 13)}</span><span><span class="alert-title">${escapeHtml(alert.title)}</span><span class="alert-message">${escapeHtml(alert.message)}</span></span><span class="alert-time">${escapeHtml(formatRelativeTime(alert.time))}</span></button>`;
@@ -2612,6 +2666,7 @@ function setView(view) {
   state.currentView = view;
   state.sidebarOpen = false;
   state.mobileSearchOpen = false;
+  state.notificationsOpen = false;
   if (view === "favorites") state.filter = "favorites";
   else if (state.filter === "favorites") state.filter = "all";
   resetMobileNavVisibility();
@@ -2647,7 +2702,11 @@ function handleClick(event) {
   }
 
   const card = event.target.closest("[data-node-uuid]");
-  if (card) { openDrawer(card.dataset.nodeUuid); return; }
+  if (card) {
+    state.notificationsOpen = false;
+    openDrawer(card.dataset.nodeUuid);
+    return;
+  }
 
   const filter = event.target.closest("[data-filter]")?.dataset.filter;
   if (filter) {
@@ -2673,6 +2732,7 @@ function handleClick(event) {
     state.mobileSearchOpen = false;
     openGlobe();
   } else if (action === "toggle-mobile-search") {
+    state.notificationsOpen = false;
     state.mobileSearchOpen = !state.mobileSearchOpen;
     if (!state.mobileSearchOpen) resetMobileNavVisibility();
     renderApp();
@@ -2681,6 +2741,20 @@ function handleClick(event) {
     state.mobileSearchOpen = false;
     resetMobileNavVisibility();
     renderApp();
+  } else if (action === "toggle-notifications") {
+    state.mobileSearchOpen = false;
+    state.notificationsOpen = !state.notificationsOpen;
+    renderApp();
+    if (state.notificationsOpen) requestAnimationFrame(() => document.querySelector("#notification-popover")?.focus({ preventScroll: true }));
+  } else if (action === "close-notifications") {
+    state.notificationsOpen = false;
+    renderApp();
+    requestAnimationFrame(() => document.querySelector(".notification-button")?.focus({ preventScroll: true }));
+  } else if (action === "view-alerts-panel") {
+    state.notificationsOpen = false;
+    state.currentView = "overview";
+    renderApp();
+    setTimeout(() => document.querySelector("#alerts-panel")?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
   } else if (action === "toggle-theme") {
     setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark", true);
   } else if (action === "toggle-sidebar") {
@@ -2706,10 +2780,6 @@ function handleClick(event) {
   } else if (action === "back-regions") {
     state.regionSelected = null;
     renderApp();
-  } else if (action === "show-alerts") {
-    state.currentView = "overview";
-    renderApp();
-    setTimeout(() => document.querySelector("#alerts-panel")?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
   } else if (action === "refresh") {
     refreshStatuses(true);
   } else if (action === "retry") {
@@ -2778,6 +2848,7 @@ function handleKeydown(event) {
   if (event.key === "Escape") {
     if (state.globeOpen) closeGlobe();
     else if (state.drawerUuid) closeDrawer();
+    else if (state.notificationsOpen) { state.notificationsOpen = false; renderApp(); }
     else if (state.mobileSearchOpen) { state.mobileSearchOpen = false; renderApp(); }
     else if (state.sidebarOpen) { state.sidebarOpen = false; renderApp(); }
     return;
