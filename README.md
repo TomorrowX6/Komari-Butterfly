@@ -22,7 +22,7 @@ A clean, responsive theme for [Komari Monitor](https://github.com/komari-monitor
 
 ## Install
 
-1. Download `komari-butterfly-v1.4.0.zip` from GitHub Releases.
+1. Download `komari-butterfly-v1.5.0.zip` from GitHub Releases.
 2. Open the Komari admin panel and upload the ZIP in theme management.
 3. Select **Komari Butterfly** and save.
 
@@ -62,8 +62,8 @@ npm run package
 The package command creates:
 
 ```text
-release/komari-butterfly-v1.4.0.zip
-release/komari-butterfly-v1.4.0.zip.sha256
+release/komari-butterfly-v1.5.0.zip
+release/komari-butterfly-v1.5.0.zip.sha256
 ```
 
 ## Release
@@ -71,7 +71,7 @@ release/komari-butterfly-v1.4.0.zip.sha256
 Update `version` in `komari-theme.json`, commit the change, create the matching tag, and push it:
 
 ```bash
-git tag v1.4.0
+git tag v1.5.0
 git push origin main --tags
 ```
 

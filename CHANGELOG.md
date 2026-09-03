@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.5.0 — 2026-09-03
+
+- Reduced mobile scrolling cost by removing large blurred background layers, disabling nonessential off-screen animation, and deferring status-driven DOM refreshes until scrolling becomes idle.
+- Lazy-loaded the 2,398-point world land dataset only when the interactive globe is opened, keeping it out of the initial dashboard request and computation path.
+- Reworked globe rendering with cached projection trigonometry, grid and route geometry, a lower mobile pixel ratio, and automatic idle-frame suspension after camera motion settles.
+- Paused polling and live-clock work while the page is hidden, resumed with an immediate refresh, and prevented overlapping status requests on slow connections.
+- Restored the complete bottom navigation on short landscape phones and removed the text caption from the raised globe action.
+- Improved mobile contrast and replaced nested interactive node cards with a dedicated accessible card action; Lighthouse accessibility and agent navigation audits now pass at 100.
+
 ## 1.4.0 — 2026-09-02
 
 - Rebuilt the traffic view around a responsive dual-axis chart inspired by Komari's traffic dashboard.

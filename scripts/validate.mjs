@@ -86,7 +86,7 @@ if (/(?:src|href)=["']https?:\/\//i.test(indexHtml)) errors.push("dist/index.htm
 if (appSource.includes("__THEME_VERSION__")) errors.push("dist/assets/app.js still contains an unreplaced version token");
 if (!appSource.includes(`const THEME_VERSION = "${manifest.version}"`)) errors.push("dist/assets/app.js version does not match komari-theme.json");
 if (!appSource.includes('from "./region-data.js"')) errors.push("dist/assets/app.js must import the bundled region data");
-if (!appSource.includes('from "./world-data.js"')) errors.push("dist/assets/app.js must import the bundled world land data");
+if (!appSource.includes('import("./world-data.js")')) errors.push("dist/assets/app.js must lazy-load the bundled world land data");
 if (appSource.includes("renderPerformancePanel")) errors.push("Top Performance panel implementation must not be present");
 if (appSource.includes("highPerformance")) errors.push("Redundant performance summary must not be present");
 if (worldDataSource.includes("export const REGION_COORDS")) errors.push("world-data.js must not duplicate REGION_COORDS from region-data.js");

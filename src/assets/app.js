@@ -1,19 +1,31 @@
 import { REGION_COORDS, REGION_NAMES } from "./region-data.js";
-import { WORLD_LAND_POINTS } from "./world-data.js";
 
 const DEG_TO_RAD = Math.PI / 180;
-const WORLD_LAND_VECTORS = Object.freeze(WORLD_LAND_POINTS.map(([longitude, latitude]) => {
-  const lat = latitude * DEG_TO_RAD;
-  const lng = longitude * DEG_TO_RAD;
-  const cosLat = Math.cos(lat);
-  return Object.freeze({ x: cosLat * Math.sin(lng), y: Math.sin(lat), z: cosLat * Math.cos(lng) });
-}));
+let worldLandVectorsPromise = null;
+
+function loadWorldLandVectors() {
+  if (!worldLandVectorsPromise) {
+    worldLandVectorsPromise = import("./world-data.js")
+      .then(({ WORLD_LAND_POINTS }) => Object.freeze(WORLD_LAND_POINTS.map(([longitude, latitude]) => {
+        const lat = latitude * DEG_TO_RAD;
+        const lng = longitude * DEG_TO_RAD;
+        const cosLat = Math.cos(lat);
+        return { x: cosLat * Math.sin(lng), y: Math.sin(lat), z: cosLat * Math.cos(lng) };
+      })))
+      .catch(error => {
+        worldLandVectorsPromise = null;
+        throw error;
+      });
+  }
+  return worldLandVectorsPromise;
+}
 
 const THEME_VERSION = "__THEME_VERSION__";
 const THEME_REPOSITORY = "https://github.com/TomorrowX6/Komari-Butterfly";
 const RPC_ENDPOINT = "/api/rpc2";
 const MOBILE_LAYOUT_QUERY = "(max-width: 720px), (max-width: 900px) and (orientation: landscape) and (max-height: 520px)";
 const MOBILE_GLOBE_QUERY = "(max-width: 680px), (max-width: 900px) and (orientation: landscape) and (max-height: 520px)";
+const MOBILE_STATUS_RENDER_IDLE_MS = 180;
 
 const DEFAULT_CONFIG = Object.freeze({
   color_scheme: "system",
@@ -672,6 +684,8 @@ let mobileNavHidden = false;
 let mobileNavLastScrollY = Math.max(0, window.scrollY);
 let mobileNavScrollFrame = null;
 let mobileInputStateFrame = null;
+let mobileStatusRenderTimer = null;
+let statusRefreshInFlight = false;
 let drawerDrag = null;
 let suppressDrawerHandleClickUntil = 0;
 
@@ -1113,7 +1127,13 @@ function renderGlobePortal(regions = buildGlobeRegions()) {
     if (!state.globeOpen) return;
     const canvas = globePortal.querySelector("#region-globe-canvas");
     if (!(canvas instanceof HTMLCanvasElement)) return;
-    regionGlobeController = createRegionGlobe(canvas, regions, code => selectGlobeRegion(code));
+    const controller = createRegionGlobe(canvas, regions, code => selectGlobeRegion(code));
+    regionGlobeController = controller;
+    loadWorldLandVectors()
+      .then(vectors => {
+        if (regionGlobeController === controller) controller.setLandVectors(vectors);
+      })
+      .catch(error => console.error("[Komari Butterfly] Failed to load globe map data", error));
     if (state.globeSelectedRegion) {
       regionGlobeController.selectRegion(state.globeSelectedRegion);
       centerSelectedGlobeRegion(state.globeSelectedRegion, false);
@@ -1199,13 +1219,14 @@ function selectGlobeRegion(code) {
 
 function createRegionGlobe(canvas, initialRegions, onSelect) {
   const context = canvas.getContext("2d", { alpha: true });
-  if (!context) return { destroy() {}, setRegions() {}, selectRegion() {}, refreshTheme() {} };
+  if (!context) return { destroy() {}, setLandVectors() {}, setRegions() {}, selectRegion() {}, refreshTheme() {} };
 
   const degrees = Math.PI / 180;
   const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const mobileGlobe = matchMedia(MOBILE_GLOBE_QUERY).matches;
-  const targetFrameInterval = mobileGlobe ? 1000 / 30 : 0;
-  const landStride = mobileGlobe ? 2 : 1;
+  const targetFrameInterval = mobileGlobe ? 1000 / 24 : 0;
+  const landStride = mobileGlobe ? 3 : 1;
+  let landVectors = [];
   let regions = initialRegions;
   let selectedCode = null;
   let width = 0;
@@ -1229,6 +1250,15 @@ function createRegionGlobe(canvas, initialRegions, onSelect) {
   let pointerTime = performance.now();
   let visibleMarkers = [];
   let palette = readPalette();
+  let haloPaint = null;
+  let spherePaint = null;
+  let cosRotation = Math.cos(rotation);
+  let sinRotation = Math.sin(rotation);
+  let cosTilt = Math.cos(tilt);
+  let sinTilt = Math.sin(tilt);
+  const arcRouteCache = new Map();
+  const regionVectorCache = new Map();
+  const canvasFont = getComputedStyle(document.body).fontFamily;
 
   function readPalette() {
     const styles = getComputedStyle(document.documentElement);
@@ -1249,17 +1279,38 @@ function createRegionGlobe(canvas, initialRegions, onSelect) {
     };
   }
 
+  function rebuildSpherePaints() {
+    if (!radius) return;
+    haloPaint = context.createRadialGradient(centerX, centerY, radius * 0.62, centerX, centerY, radius * 1.28);
+    haloPaint.addColorStop(0, "rgba(0,0,0,0)");
+    haloPaint.addColorStop(0.72, palette.dark ? "rgba(83,100,244,.12)" : "rgba(83,100,244,.09)");
+    haloPaint.addColorStop(1, "rgba(0,0,0,0)");
+
+    spherePaint = context.createRadialGradient(centerX - radius * 0.34, centerY - radius * 0.38, radius * 0.08, centerX, centerY, radius * 1.08);
+    if (palette.dark) {
+      spherePaint.addColorStop(0, "#24395f");
+      spherePaint.addColorStop(0.48, "#14243f");
+      spherePaint.addColorStop(1, "#09111f");
+    } else {
+      spherePaint.addColorStop(0, "#f8fbff");
+      spherePaint.addColorStop(0.52, "#dbe8fb");
+      spherePaint.addColorStop(1, "#aebfda");
+    }
+  }
+
   function resize() {
     const rect = canvas.getBoundingClientRect();
     width = Math.max(1, rect.width);
     height = Math.max(1, rect.height);
-    pixelRatio = Math.min(window.devicePixelRatio || 1, mobileGlobe ? 1.5 : 2);
+    pixelRatio = Math.min(window.devicePixelRatio || 1, mobileGlobe ? 1.25 : 2);
     canvas.width = Math.round(width * pixelRatio);
     canvas.height = Math.round(height * pixelRatio);
     context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
     centerX = width / 2;
     centerY = height / 2;
     radius = Math.max(80, Math.min(width, height) * 0.39);
+    rebuildSpherePaints();
+    queueDraw();
   }
 
   function vectorFromLatLng(lat, lng) {
@@ -1273,13 +1324,28 @@ function createRegionGlobe(canvas, initialRegions, onSelect) {
     };
   }
 
+  const gridSampleStep = mobileGlobe ? 6 : 3;
+  const latitudeGridVectors = (mobileGlobe ? [-45, 0, 45] : [-60, -30, 0, 30, 60]).map(lat => {
+    const vectors = [];
+    for (let lng = -180; lng <= 180; lng += gridSampleStep) vectors.push(vectorFromLatLng(lat, lng));
+    return vectors;
+  });
+  const longitudeGridVectors = (mobileGlobe ? [-135, -90, -45, 0, 45, 90, 135, 180] : [-150, -120, -90, -60, -30, 0, 30, 60, 90, 120, 150, 180]).map(lng => {
+    const vectors = [];
+    for (let lat = -88; lat <= 88; lat += gridSampleStep) vectors.push(vectorFromLatLng(lat, lng));
+    return vectors;
+  });
+
+  function updateProjectionMatrix() {
+    cosRotation = Math.cos(rotation);
+    sinRotation = Math.sin(rotation);
+    cosTilt = Math.cos(tilt);
+    sinTilt = Math.sin(tilt);
+  }
+
   function projectVector(vector, altitude = 1) {
-    const cosRotation = Math.cos(rotation);
-    const sinRotation = Math.sin(rotation);
     const x = vector.x * cosRotation - vector.z * sinRotation;
     const z = vector.x * sinRotation + vector.z * cosRotation;
-    const cosTilt = Math.cos(tilt);
-    const sinTilt = Math.sin(tilt);
     const y = vector.y * cosTilt - z * sinTilt;
     const depth = vector.y * sinTilt + z * cosTilt;
     return {
@@ -1289,14 +1355,11 @@ function createRegionGlobe(canvas, initialRegions, onSelect) {
     };
   }
 
-  function project(lat, lng, altitude = 1) {
-    return projectVector(vectorFromLatLng(lat, lng), altitude);
-  }
-
-  function drawProjectedLine(points, alpha = 0.2, widthValue = 1) {
+  function drawProjectedLine(vectors, alpha = 0.2, widthValue = 1) {
     context.beginPath();
     let active = false;
-    for (const point of points) {
+    for (const vector of vectors) {
+      const point = projectVector(vector);
       if (point.z <= 0) {
         active = false;
         continue;
@@ -1320,16 +1383,8 @@ function createRegionGlobe(canvas, initialRegions, onSelect) {
     context.beginPath();
     context.arc(centerX, centerY, radius, 0, Math.PI * 2);
     context.clip();
-    for (let lat = -60; lat <= 60; lat += 30) {
-      const points = [];
-      for (let lng = -180; lng <= 180; lng += 3) points.push(project(lat, lng));
-      drawProjectedLine(points, palette.dark ? 0.2 : 0.24, 0.8);
-    }
-    for (let lng = -150; lng <= 180; lng += 30) {
-      const points = [];
-      for (let lat = -88; lat <= 88; lat += 3) points.push(project(lat, lng));
-      drawProjectedLine(points, palette.dark ? 0.17 : 0.2, 0.8);
-    }
+    for (const vectors of latitudeGridVectors) drawProjectedLine(vectors, palette.dark ? 0.2 : 0.24, 0.8);
+    for (const vectors of longitudeGridVectors) drawProjectedLine(vectors, palette.dark ? 0.17 : 0.2, 0.8);
     context.restore();
   }
 
@@ -1339,8 +1394,8 @@ function createRegionGlobe(canvas, initialRegions, onSelect) {
     context.arc(centerX, centerY, radius * 0.995, 0, Math.PI * 2);
     context.clip();
     context.beginPath();
-    for (let index = 0; index < WORLD_LAND_VECTORS.length; index += landStride) {
-      const vector = WORLD_LAND_VECTORS[index];
+    for (let index = 0; index < landVectors.length; index += landStride) {
+      const vector = landVectors[index];
       const point = projectVector(vector, 0.993);
       if (point.z <= 0) continue;
       const dot = 0.62 + point.z * 0.72;
@@ -1352,8 +1407,8 @@ function createRegionGlobe(canvas, initialRegions, onSelect) {
     context.fill();
 
     context.beginPath();
-    for (let index = 0; index < WORLD_LAND_VECTORS.length; index += mobileGlobe ? 22 : 11) {
-      const point = projectVector(WORLD_LAND_VECTORS[index], 0.998);
+    for (let index = 0; index < landVectors.length; index += mobileGlobe ? 30 : 11) {
+      const point = projectVector(landVectors[index], 0.998);
       if (point.z <= 0.18) continue;
       const dot = 0.7 + point.z * 0.52;
       context.moveTo(point.x + dot, point.y);
@@ -1380,15 +1435,25 @@ function createRegionGlobe(canvas, initialRegions, onSelect) {
   }
 
   function drawArc(fromRegion, toRegion, index) {
-    const from = vectorFromLatLng(fromRegion.lat, fromRegion.lng);
-    const to = vectorFromLatLng(toRegion.lat, toRegion.lng);
+    const routeKey = `${fromRegion.code}:${fromRegion.lat}:${fromRegion.lng}>${toRegion.code}:${toRegion.lat}:${toRegion.lng}:${index}`;
+    let route = arcRouteCache.get(routeKey);
+    if (!route) {
+      const from = vectorFromLatLng(fromRegion.lat, fromRegion.lng);
+      const to = vectorFromLatLng(toRegion.lat, toRegion.lng);
+      route = [];
+      for (let step = 0; step <= 42; step += 1) {
+        const amount = step / 42;
+        route.push({
+          vector: slerp(from, to, amount),
+          altitude: 1.015 + Math.sin(Math.PI * amount) * (0.1 + Math.min(index, 3) * 0.012),
+        });
+      }
+      arcRouteCache.set(routeKey, route);
+    }
     context.beginPath();
     let active = false;
-    for (let step = 0; step <= 42; step += 1) {
-      const amount = step / 42;
-      const point = slerp(from, to, amount);
-      const altitude = 1.015 + Math.sin(Math.PI * amount) * (0.1 + Math.min(index, 3) * 0.012);
-      const projected = projectVector(point, altitude);
+    for (const sample of route) {
+      const projected = projectVector(sample.vector, sample.altitude);
       if (projected.z <= -0.03) {
         active = false;
         continue;
@@ -1414,16 +1479,22 @@ function createRegionGlobe(canvas, initialRegions, onSelect) {
   }
 
   function drawMarker(region, index, time) {
-    const point = project(region.lat, region.lng, 1.025);
+    const vectorKey = `${region.code}:${region.lat}:${region.lng}`;
+    let vector = regionVectorCache.get(vectorKey);
+    if (!vector) {
+      vector = vectorFromLatLng(region.lat, region.lng);
+      regionVectorCache.set(vectorKey, vector);
+    }
+    const point = projectVector(vector, 1.025);
     if (point.z <= 0) return;
     const color = markerColor(region);
     const depthAlpha = 0.35 + point.z * 0.65;
-    const pulse = reducedMotion ? 0 : (Math.sin(time / 720 + index * 0.9) + 1) * 0.5;
+    const pulse = reducedMotion || mobileGlobe ? 0 : (Math.sin(time / 720 + index * 0.9) + 1) * 0.5;
     const selected = selectedCode === region.code;
     context.save();
     context.globalAlpha = depthAlpha;
     context.shadowColor = color;
-    context.shadowBlur = selected ? 22 : 13;
+    context.shadowBlur = mobileGlobe ? 0 : selected ? 22 : 13;
     context.beginPath();
     context.arc(point.x, point.y, selected ? 6.4 : 4.6, 0, Math.PI * 2);
     context.fillStyle = color;
@@ -1437,7 +1508,7 @@ function createRegionGlobe(canvas, initialRegions, onSelect) {
     context.stroke();
     if (selected) {
       context.globalAlpha = Math.min(1, depthAlpha + 0.2);
-      context.font = `600 12px ${getComputedStyle(document.body).fontFamily}`;
+      context.font = `600 12px ${canvasFont}`;
       context.textAlign = "center";
       context.fillStyle = palette.text;
       context.fillText(`${region.flag} ${region.code}`, point.x, point.y - 18);
@@ -1448,28 +1519,14 @@ function createRegionGlobe(canvas, initialRegions, onSelect) {
 
   function drawSphere() {
     context.save();
-    const halo = context.createRadialGradient(centerX, centerY, radius * 0.62, centerX, centerY, radius * 1.28);
-    halo.addColorStop(0, "rgba(0,0,0,0)");
-    halo.addColorStop(0.72, palette.dark ? "rgba(83,100,244,.12)" : "rgba(83,100,244,.09)");
-    halo.addColorStop(1, "rgba(0,0,0,0)");
-    context.fillStyle = halo;
+    context.fillStyle = haloPaint || "rgba(0,0,0,0)";
     context.beginPath();
     context.arc(centerX, centerY, radius * 1.3, 0, Math.PI * 2);
     context.fill();
 
-    const sphere = context.createRadialGradient(centerX - radius * 0.34, centerY - radius * 0.38, radius * 0.08, centerX, centerY, radius * 1.08);
-    if (palette.dark) {
-      sphere.addColorStop(0, "#24395f");
-      sphere.addColorStop(0.48, "#14243f");
-      sphere.addColorStop(1, "#09111f");
-    } else {
-      sphere.addColorStop(0, "#f8fbff");
-      sphere.addColorStop(0.52, "#dbe8fb");
-      sphere.addColorStop(1, "#aebfda");
-    }
     context.beginPath();
     context.arc(centerX, centerY, radius, 0, Math.PI * 2);
-    context.fillStyle = sphere;
+    context.fillStyle = spherePaint || (palette.dark ? "#14243f" : "#dbe8fb");
     context.fill();
     context.globalAlpha = palette.dark ? 0.48 : 0.42;
     context.strokeStyle = palette.accent;
@@ -1482,22 +1539,36 @@ function createRegionGlobe(canvas, initialRegions, onSelect) {
     return Math.atan2(Math.sin(target - current), Math.cos(target - current));
   }
 
+  function queueDraw() {
+    if (!frameId) frameId = requestAnimationFrame(draw);
+  }
+
   function draw(time) {
+    frameId = 0;
     if (document.hidden) {
-      frameId = requestAnimationFrame(draw);
+      if (!mobileGlobe) queueDraw();
       return;
     }
     const frameElapsed = time - previousTime;
     if (targetFrameInterval && frameElapsed < targetFrameInterval) {
-      frameId = requestAnimationFrame(draw);
+      queueDraw();
       return;
     }
     const elapsed = Math.min(48, frameElapsed);
     previousTime = time;
     if (!dragging) {
       if (targetRotation !== null && targetTilt !== null) {
-        rotation += shortestAngleDelta(targetRotation, rotation) * 0.075;
-        tilt += (targetTilt - tilt) * 0.075;
+        const rotationDelta = shortestAngleDelta(targetRotation, rotation);
+        const tiltDelta = targetTilt - tilt;
+        if (Math.abs(rotationDelta) < 0.0005 && Math.abs(tiltDelta) < 0.0005) {
+          rotation = targetRotation;
+          tilt = targetTilt;
+          targetRotation = null;
+          targetTilt = null;
+        } else {
+          rotation += rotationDelta * 0.075;
+          tilt += tiltDelta * 0.075;
+        }
         spinVelocity = 0;
         tiltVelocity = 0;
       } else {
@@ -1516,6 +1587,8 @@ function createRegionGlobe(canvas, initialRegions, onSelect) {
       }
     }
 
+    updateProjectionMatrix();
+
     context.clearRect(0, 0, width, height);
     drawSphere();
     drawLand();
@@ -1528,7 +1601,12 @@ function createRegionGlobe(canvas, initialRegions, onSelect) {
 
     visibleMarkers = [];
     regions.forEach((region, index) => drawMarker(region, index, time));
-    frameId = requestAnimationFrame(draw);
+    const hasMotion = dragging
+      || (targetRotation !== null && targetTilt !== null)
+      || Math.abs(spinVelocity) > 0.000002
+      || Math.abs(tiltVelocity) > 0.000002
+      || (!selectedCode && !reducedMotion);
+    if (!mobileGlobe || hasMotion) queueDraw();
   }
 
   function hitTest(x, y) {
@@ -1547,6 +1625,7 @@ function createRegionGlobe(canvas, initialRegions, onSelect) {
     tiltVelocity = 0;
     canvas.setPointerCapture?.(event.pointerId);
     canvas.classList.add("is-dragging");
+    queueDraw();
   }
 
   function pointerMove(event) {
@@ -1567,6 +1646,7 @@ function createRegionGlobe(canvas, initialRegions, onSelect) {
     tilt = nextTilt;
     spinVelocity = clamp(spinVelocity * 0.42 + rotationDelta / sampleTime * 0.58, -0.0045, 0.0045);
     tiltVelocity = clamp(tiltVelocity * 0.42 + tiltDelta / sampleTime * 0.58, -0.003, 0.003);
+    queueDraw();
   }
 
   function pointerUp(event) {
@@ -1585,6 +1665,7 @@ function createRegionGlobe(canvas, initialRegions, onSelect) {
       const marker = hitTest(event.clientX - rect.left, event.clientY - rect.top);
       if (marker) onSelect(marker.code);
     }
+    queueDraw();
   }
 
   function selectRegion(code) {
@@ -1595,6 +1676,7 @@ function createRegionGlobe(canvas, initialRegions, onSelect) {
     targetTilt = clamp(region.lat * degrees * 0.72, -0.58, 0.58);
     spinVelocity = 0;
     tiltVelocity = 0;
+    queueDraw();
   }
 
   function setRegions(nextRegions) {
@@ -1606,10 +1688,18 @@ function createRegionGlobe(canvas, initialRegions, onSelect) {
       spinVelocity = 0;
       tiltVelocity = 0;
     }
+    queueDraw();
+  }
+
+  function setLandVectors(nextVectors) {
+    landVectors = nextVectors;
+    queueDraw();
   }
 
   function refreshTheme() {
     palette = readPalette();
+    rebuildSpherePaints();
+    queueDraw();
   }
 
   canvas.addEventListener("pointerdown", pointerDown);
@@ -1620,7 +1710,7 @@ function createRegionGlobe(canvas, initialRegions, onSelect) {
   resizeObserver?.observe(canvas);
   window.addEventListener("resize", resize);
   resize();
-  frameId = requestAnimationFrame(draw);
+  queueDraw();
 
   return {
     destroy() {
@@ -1632,6 +1722,7 @@ function createRegionGlobe(canvas, initialRegions, onSelect) {
       canvas.removeEventListener("pointerup", pointerUp);
       canvas.removeEventListener("pointercancel", pointerUp);
     },
+    setLandVectors,
     setRegions,
     selectRegion,
     refreshTheme,
@@ -1852,7 +1943,7 @@ function radialRing(value) {
 }
 
 function renderLoading() {
-  app.innerHTML = `<main class="loading-screen"><section class="loading-card">
+  app.innerHTML = `<main class="loading-screen" aria-busy="true"><section class="loading-card">
     <div class="loading-logo">${butterflyLogo()}</div>
     <h1>Komari Butterfly</h1>
     <p>${escapeHtml(t("dashboardSubtitle"))}</p>
@@ -1861,7 +1952,7 @@ function renderLoading() {
 }
 
 function renderFatalError() {
-  app.innerHTML = `<main class="loading-screen"><section class="loading-card">
+  app.innerHTML = `<main class="loading-screen"><section class="loading-card" role="alert">
     <div class="loading-logo">${icon("warning", 34)}</div>
     <h1>${escapeHtml(t("loadFailedTitle"))}</h1>
     <p>${escapeHtml(t("loadFailedCopy"))}</p>
@@ -1905,6 +1996,10 @@ function restoreRenderContinuity(snapshot) {
 }
 
 function renderApp() {
+  if (mobileStatusRenderTimer !== null) {
+    clearTimeout(mobileStatusRenderTimer);
+    mobileStatusRenderTimer = null;
+  }
   const continuity = captureRenderContinuity();
   const metrics = aggregateMetrics();
   const brand = state.config.brand_text.trim() || String(state.publicInfo.sitename || "Komari");
@@ -1947,7 +2042,7 @@ function renderApp() {
     <button class="sidebar-scrim" type="button" data-action="close-sidebar" aria-label="${escapeHtml(t("close"))}"></button>
     <main class="app-main">
       <header class="topbar${state.mobileSearchOpen ? " is-mobile-search-open" : ""}${state.notificationsOpen ? " is-notification-open" : ""}">
-        <button class="mobile-brand" type="button" data-view="overview" aria-label="${escapeHtml(brand)}">
+        <button class="mobile-brand" type="button" data-view="overview">
           <span class="mobile-brand-mark">${butterflyLogo()}</span>
           <span class="mobile-brand-copy"><strong>${escapeHtml(brand)}</strong><small>${escapeHtml(currentViewTitle)}</small></span>
         </button>
@@ -2157,10 +2252,12 @@ function renderNodeCard(node, index) {
   const favorite = state.favorites.has(node.uuid);
   const totalTraffic = finiteNumber(status.net_total_up) + finiteNumber(status.net_total_down);
   const ipTags = state.config.show_ip_tags ? [node.ipv4 ? `<span class="ip-tag">IPv4 ${escapeHtml(node.ipv4)}</span>` : "", node.ipv6 ? `<span class="ip-tag">IPv6 ${escapeHtml(node.ipv6)}</span>` : ""].join("") : "";
-  return `<article class="node-card${online ? "" : " is-offline"}" tabindex="0" role="button" data-node-uuid="${escapeHtml(node.uuid)}" style="--node-accent:${color}">
+  const nodeName = String(node.name || node.uuid);
+  return `<article class="node-card${online ? "" : " is-offline"}" style="--node-accent:${color}">
+    <button class="node-card-open" type="button" data-node-uuid="${escapeHtml(node.uuid)}" aria-label="${escapeHtml(`${nodeName} · ${t("nodeDetails")}`)}"></button>
     <div class="node-card-top">
       <span class="node-flag">${regionFlag(node.region)}</span>
-      <div class="node-heading"><div class="node-name-row"><span class="node-status-dot"></span><span class="node-name">${escapeHtml(node.name || node.uuid)}</span></div><div class="node-subtitle">${escapeHtml(nodeSubtitle(node))}</div></div>
+      <div class="node-heading"><div class="node-name-row"><span class="node-status-dot"></span><span class="node-name">${escapeHtml(nodeName)}</span></div><div class="node-subtitle">${escapeHtml(nodeSubtitle(node))}</div></div>
       <span class="latency-pill" style="--latency-color:${latencyInfo.color}">${latency === null ? t("noLatency") : `${Math.round(latency)}ms`}</span>
     </div>
     <button class="favorite-button${favorite ? " is-active" : ""}" type="button" data-favorite-uuid="${escapeHtml(node.uuid)}" aria-label="${escapeHtml(t("favorites"))}">${icon("favorites", 16)}</button>
@@ -2455,11 +2552,11 @@ function renderMobileNav() {
 function mobileNavItem(view, iconName) {
   const active = state.currentView === view;
   const current = active ? ' aria-current="page"' : "";
-  return `<button class="mobile-nav-item${active ? " is-active" : ""}" type="button" data-view="${view}"${current}>${icon(iconName, 19)}<span>${escapeHtml(t(view))}</span></button>`;
+  return `<button class="mobile-nav-item${active ? " is-active" : ""}" type="button" data-view="${view}"${current}>${icon(iconName, 19)}<span class="mobile-nav-label">${escapeHtml(t(view))}</span></button>`;
 }
 
 function mobileGlobeNavItem() {
-  return `<button class="mobile-nav-item mobile-nav-globe" type="button" data-action="open-globe" aria-label="${escapeHtml(t("globeTitle"))}"><span class="mobile-nav-globe-icon">${icon("globe", 21)}</span><span>${escapeHtml(t("globeNav"))}</span></button>`;
+  return `<button class="mobile-nav-item mobile-nav-globe" type="button" data-action="open-globe" aria-label="${escapeHtml(t("globeTitle"))}"><span class="mobile-nav-globe-icon">${icon("globe", 21)}</span></button>`;
 }
 
 function renderDrawer() {
@@ -2617,6 +2714,32 @@ function resetMobileNavVisibility() {
   setMobileNavHidden(false);
 }
 
+function scheduleStatusRender(manual = false) {
+  const mobile = matchMedia(MOBILE_LAYOUT_QUERY).matches;
+  if (!mobile || manual) {
+    renderApp();
+    return;
+  }
+  if (document.hidden) return;
+  if (state.globeOpen) {
+    refreshOpenGlobe();
+    return;
+  }
+  if (state.drawerUuid || state.mobileSearchOpen || state.sidebarOpen || state.notificationsOpen) return;
+  if (mobileStatusRenderTimer !== null) clearTimeout(mobileStatusRenderTimer);
+  mobileStatusRenderTimer = window.setTimeout(() => {
+    mobileStatusRenderTimer = null;
+    if (!document.hidden && !state.globeOpen && !state.drawerUuid && !state.mobileSearchOpen && !state.sidebarOpen && !state.notificationsOpen) renderApp();
+  }, MOBILE_STATUS_RENDER_IDLE_MS);
+}
+
+function postponeMobileStatusRender() {
+  if (mobileStatusRenderTimer === null) return;
+  clearTimeout(mobileStatusRenderTimer);
+  mobileStatusRenderTimer = null;
+  scheduleStatusRender(false);
+}
+
 function updateMobileNavVisibility() {
   if (!matchMedia(MOBILE_LAYOUT_QUERY).matches || state.drawerUuid || state.globeOpen || state.mobileSearchOpen || state.sidebarOpen) {
     resetMobileNavVisibility();
@@ -2632,6 +2755,7 @@ function updateMobileNavVisibility() {
 }
 
 function scheduleMobileNavVisibility() {
+  postponeMobileStatusRender();
   if (mobileNavScrollFrame !== null) return;
   mobileNavScrollFrame = requestAnimationFrame(() => {
     mobileNavScrollFrame = null;
@@ -2875,10 +2999,6 @@ function handleKeydown(event) {
     }
     return;
   }
-  if ((event.key === "Enter" || event.key === " ") && event.target.matches(".node-card")) {
-    event.preventDefault();
-    openDrawer(event.target.dataset.nodeUuid);
-  }
 }
 
 function handleDrawerPointerDown(event) {
@@ -2978,35 +3098,63 @@ async function loadLiveData() {
 }
 
 async function refreshStatuses(manual = false) {
-  if (state.demoMode) {
-    mutateDemoStatuses();
-    state.connected = true;
-    state.lastUpdated = Date.now();
-    updateSamples();
-    renderApp();
-    if (manual) showToast(t("realtimeMonitoring"), t("updatedNow"), "success");
-    return;
-  }
+  if (statusRefreshInFlight) return;
+  statusRefreshInFlight = true;
   try {
-    const raw = await rpc.call("common:getNodesLatestStatus", undefined, 12000);
-    state.statuses = normalizeStatuses(raw);
-    state.connected = true;
-    state.lastUpdated = Date.now();
-    updateSamples();
-    renderApp();
-    if (manual) showToast(t("realtimeMonitoring"), t("updatedNow"), "success");
-  } catch (error) {
-    state.connected = false;
-    renderApp();
-    if (manual) showToast(t("disconnected"), error instanceof Error ? error.message : t("offlineData"), "warning");
+    if (state.demoMode) {
+      mutateDemoStatuses();
+      state.connected = true;
+      state.lastUpdated = Date.now();
+      updateSamples();
+      scheduleStatusRender(manual);
+      if (manual) showToast(t("realtimeMonitoring"), t("updatedNow"), "success");
+      return;
+    }
+    try {
+      const raw = await rpc.call("common:getNodesLatestStatus", undefined, 12000);
+      state.statuses = normalizeStatuses(raw);
+      state.connected = true;
+      state.lastUpdated = Date.now();
+      updateSamples();
+      scheduleStatusRender(manual);
+      if (manual) showToast(t("realtimeMonitoring"), t("updatedNow"), "success");
+    } catch (error) {
+      state.connected = false;
+      scheduleStatusRender(manual);
+      if (manual) showToast(t("disconnected"), error instanceof Error ? error.message : t("offlineData"), "warning");
+    }
+  } finally {
+    statusRefreshInFlight = false;
   }
 }
 
 function startTimers() {
-  clearInterval(state.pollTimer);
-  clearInterval(state.clockTimer);
+  stopTimers();
+  if (document.hidden) return;
   state.pollTimer = setInterval(() => refreshStatuses(false), state.config.poll_interval * 1000);
   state.clockTimer = setInterval(updateLiveElements, 1000);
+}
+
+function stopTimers() {
+  clearInterval(state.pollTimer);
+  clearInterval(state.clockTimer);
+  state.pollTimer = null;
+  state.clockTimer = null;
+}
+
+function handleVisibilityChange() {
+  if (document.hidden) {
+    stopTimers();
+    if (mobileStatusRenderTimer !== null) {
+      clearTimeout(mobileStatusRenderTimer);
+      mobileStatusRenderTimer = null;
+    }
+    return;
+  }
+  if (state.loading || state.error) return;
+  updateLiveElements();
+  void refreshStatuses(false);
+  startTimers();
 }
 
 async function initialize() {
@@ -3167,6 +3315,7 @@ document.addEventListener("pointermove", handleDrawerPointerMove, { passive: fal
 document.addEventListener("pointerup", handleDrawerPointerUp);
 document.addEventListener("pointercancel", handleDrawerPointerCancel);
 document.addEventListener("keydown", handleKeydown);
+document.addEventListener("visibilitychange", handleVisibilityChange);
 document.addEventListener("focusin", scheduleMobileInputState);
 document.addEventListener("focusout", () => setTimeout(scheduleMobileInputState, 0));
 window.addEventListener("scroll", scheduleMobileNavVisibility, { passive: true });

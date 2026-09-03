@@ -1820,6 +1820,22 @@ svg {
   transform: translateY(-2px);
 }
 
+.node-card-open {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  cursor: pointer;
+  border: 0;
+  border-radius: inherit;
+  outline: 0;
+  background: transparent;
+}
+
+.node-card-open:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -3px;
+}
+
 .node-card.is-offline {
   filter: saturate(0.7);
 }
@@ -3594,7 +3610,7 @@ svg {
     place-items: center;
     border: 0;
     border-radius: 13px;
-    color: var(--muted-2);
+    color: var(--muted);
     background: transparent;
   }
 
@@ -4650,7 +4666,7 @@ svg {
 
   .mobile-brand-copy small {
     margin-top: 3px;
-    color: var(--muted-2);
+    color: var(--muted);
     font-size: 8px;
   }
 
@@ -5152,7 +5168,7 @@ svg {
     height: 20px;
   }
 
-  .mobile-nav-item > span:last-child {
+  .mobile-nav-label {
     max-width: 100%;
     margin-top: 0;
     overflow: hidden;
@@ -5170,24 +5186,19 @@ svg {
     display: grid;
     width: 42px;
     height: 42px;
-    margin-top: -15px;
+    margin-top: 0;
     place-items: center;
     border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
     border-radius: 15px;
     color: var(--accent-contrast);
     background: linear-gradient(145deg, color-mix(in srgb, var(--accent) 92%, white), var(--accent-strong));
     box-shadow: 0 10px 22px color-mix(in srgb, var(--accent) 32%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.24);
+    transform: translateY(-4px);
   }
 
   .mobile-nav-globe-icon svg {
     width: 21px;
     height: 21px;
-  }
-
-  .mobile-nav-globe > span:last-child {
-    margin-top: -5px;
-    color: var(--accent-strong);
-    font-weight: 680;
   }
 
   .toast-stack {
@@ -5527,7 +5538,7 @@ svg {
     left: max(7px, env(safe-area-inset-left));
   }
 
-  .mobile-nav-item > span:last-child {
+  .mobile-nav-label {
     font-size: 7px;
   }
 }
@@ -5546,14 +5557,15 @@ svg {
     min-height: 46px;
   }
 
-  .mobile-nav-item > span:last-child {
+  .mobile-nav-label {
     display: none;
   }
 
   .mobile-nav-globe-icon {
     width: 38px;
     height: 38px;
-    margin-top: -8px;
+    margin-top: 0;
+    transform: translateY(-3px);
   }
 
   .globe-dialog-body {
@@ -5917,7 +5929,67 @@ svg {
   }
 
   body {
-    padding-bottom: 0;
+    padding-bottom: calc(var(--mobile-nav-height) + max(14px, env(safe-area-inset-bottom)));
+  }
+
+  .mobile-bottom-nav {
+    position: fixed;
+    right: max(8px, env(safe-area-inset-right));
+    bottom: calc(6px + env(safe-area-inset-bottom));
+    left: max(8px, env(safe-area-inset-left));
+    z-index: 50;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    border: 1px solid var(--line-strong);
+    border-radius: 18px;
+    background: var(--mica-strong);
+    box-shadow: var(--shadow-lg), inset 0 1px 0 var(--surface-highlight);
+    transition: opacity 180ms ease, transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .mobile-nav-item {
+    display: grid;
+    min-width: 0;
+    cursor: pointer;
+    place-items: center;
+    border: 0;
+    border-radius: 12px;
+    color: var(--muted);
+    background: transparent;
+  }
+
+  .mobile-nav-item.is-active {
+    color: var(--accent-strong);
+    background: var(--accent-soft);
+  }
+
+  .mobile-nav-item svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .mobile-nav-globe {
+    overflow: visible;
+    color: var(--accent-strong);
+  }
+
+  .mobile-nav-globe-icon {
+    display: grid;
+    place-items: center;
+    border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
+    border-radius: 14px;
+    color: var(--accent-contrast);
+    background: linear-gradient(145deg, color-mix(in srgb, var(--accent) 92%, white), var(--accent-strong));
+    box-shadow: 0 8px 18px color-mix(in srgb, var(--accent) 30%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.24);
+  }
+
+  .app-shell.mobile-nav-hidden .mobile-bottom-nav,
+  .app-shell.mobile-search-active .mobile-bottom-nav,
+  .app-shell.sidebar-open .mobile-bottom-nav,
+  .app-shell.has-mobile-overlay .mobile-bottom-nav {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(calc(100% + 30px));
   }
 
   .topbar {
@@ -6379,14 +6451,15 @@ svg {
     min-height: 46px;
   }
 
-  .mobile-nav-item > span:last-child {
+  .mobile-nav-label {
     display: none;
   }
 
   .mobile-nav-globe-icon {
     width: 38px;
     height: 38px;
-    margin-top: -8px;
+    margin-top: 0;
+    transform: translateY(-3px);
   }
 
   .globe-dialog {
@@ -6953,5 +7026,85 @@ svg {
 
   .notification-item time {
     display: none;
+  }
+}
+
+/* Mobile performance: avoid continuously repainting large blurred layers while scrolling. */
+@media (max-width: 720px), (max-width: 900px) and (orientation: landscape) and (max-height: 520px) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  body::before {
+    position: absolute;
+    filter: none;
+  }
+
+  body::after {
+    display: none;
+  }
+
+  .topbar,
+  .mobile-bottom-nav,
+  .toolbar-panel,
+  .metric-card,
+  .panel,
+  .node-card,
+  .region-card,
+  .about-card,
+  .empty-card,
+  .notification-popover,
+  .globe-backdrop,
+  .globe-dialog,
+  .globe-stage-summary > span {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  .topbar,
+  .mobile-bottom-nav,
+  .toolbar-panel {
+    background: color-mix(in srgb, var(--surface-solid) 96%, var(--page));
+  }
+
+  .topbar {
+    box-shadow: 0 1px 0 var(--line), 0 5px 14px color-mix(in srgb, var(--page-deep) 42%, transparent);
+  }
+
+  .mobile-bottom-nav {
+    box-shadow: 0 10px 28px color-mix(in srgb, var(--page-deep) 56%, transparent), inset 0 1px 0 var(--surface-highlight-strong);
+    will-change: auto;
+  }
+
+  .toolbar-panel {
+    box-shadow: 0 5px 16px color-mix(in srgb, var(--page-deep) 42%, transparent), inset 0 1px 0 var(--surface-highlight-strong);
+  }
+
+  .node-card {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 166px;
+  }
+
+  .node-card:hover {
+    box-shadow: var(--shadow-sm), inset 0 1px 0 var(--surface-highlight);
+    transform: none;
+  }
+
+  .metric-card::after,
+  .network-art,
+  .network-art .globe-glow,
+  .network-art .globe-disc,
+  .network-art .land,
+  .network-art .arc {
+    filter: none;
+  }
+
+  .network-art .arc,
+  .latency-bar {
+    animation: none;
+  }
+
+  .globe-dialog {
+    background: var(--surface-solid);
   }
 }
